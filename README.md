@@ -1,7 +1,7 @@
 simple-temporal-memory
 ======================
 
-An implemention of a Heirachical temporal memory (machine learning algorithum) based off of the ideas proposed by Jeff Hawkins (founder of Numenta). Numenta allows the use of their IP for non-comercal purposes. For those interested in learning more about HTM technology please visit the Numenta website as well as the NuPic project here on GitHub.
+An implementation of a Hierarchical temporal memory (machine learning algorithm) based off of the ideas proposed by Jeff Hawkins (founder of Numenta). Numenta allows the use of their IP for non-commercial purposes. For those interested in learning more about HTM technology please visit the Numenta website as well as the NuPic project here on GitHub.
 
 Compile information:
 	cd into the src/ directory and type 'make' followed by 'make run' 
