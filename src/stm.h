@@ -38,6 +38,7 @@ private:
 	std::vector<int> inputs_vec;//store the columns
 	std::vector<Column*> column_vec;//store the columns
 	std::vector<Cell*> cell_pre_active_vec;
+	std::vector<Cell*> cell_temp_active_vec;
 	std::vector<Cell*> cell_set_active_vec;
 	std::vector<Cell*> cell_make_connections_vec;
 	std::vector<Cell_counter*> cell_count_predicted_vec;

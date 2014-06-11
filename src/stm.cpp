@@ -134,33 +134,41 @@ void Stm::compute_active()
 	{
 		Column* col = column_vec[inputs_vec[i]];
 		bool bursting = true;
+		cell_temp_active_vec.clear();
 		for(int j=0;j<col->cell_vec.size();j++)
 		{
 			Cell* cell = col->cell_vec[j];
 			if(cell->getPredictedStep() == current_step)
 			{
 				bursting = false;
-				//que the cell to become active 
-				cell_set_active_vec.push_back(cell);
-				//strengthen/weaken receive connections
-				for(int k=0;learn && k<cell->receive_connection_vec.size();k++)
-				{
-					Cell_connection* con = cell->receive_connection_vec[k];
-					if(con->cell_send->getActiveStep() == current_step-1)
-					{
-						if(con->strength < 1)
-							con->strength+=learn_increment;
-					}
-					else
-					{
-						if(con->strength > 0)
-							con->strength-=learn_decrement;
-					}
-				}
+				cell_temp_active_vec.push_back(cell);
 			}
 		}
-		//activate all the cells in a column when bursting
-		if(bursting)
+		//pick a random cell to become active
+		if(!bursting)
+		{
+			int index = rand() % cell_temp_active_vec.size();
+			Cell* cell = cell_temp_active_vec[index];
+			//que the cell to become active 
+			cell_set_active_vec.push_back(cell);
+			//strengthen/weaken receive connections
+			for(int k=0;learn && k<cell->receive_connection_vec.size();k++)
+			{
+				Cell_connection* con = cell->receive_connection_vec[k];
+				if(con->cell_send->getActiveStep() == current_step-1)
+				{
+					if(con->strength < 1)
+						con->strength+=learn_increment;
+				}
+				else
+				{
+					if(con->strength > 0)
+						con->strength-=learn_decrement;
+				}
+			}
+
+		}
+		else//activate all the cells in a column when bursting
 		{
 			for(int j=0;j<col->cell_vec.size();j++)
 			{
@@ -243,7 +251,8 @@ void Stm::make_predictions()
 
 void Stm::new_cell_connection(Cell* c_send, Cell* c_receive)
 {
-	double strength = 0.1 + ((rand() % 5)/(double)10);
+	//double strength = 0.1 + ((rand() % 5)/(double)10);
+	double strength = 0.15 + ((rand() % 3)*0.05);
 	new_cell_connection(c_send, c_receive, strength);
 }
 
@@ -270,9 +279,7 @@ void Stm::new_cell_connection(Cell* c_send, Cell* c_receive, double strength)
 			{
 				Cell_connection* con = c_send->send_connection_vec[i];
 				if(con->strength <= 0)
-				{
 					delete_cell_connection(con);
-				}
 			}
 			connect = false;
 		}
