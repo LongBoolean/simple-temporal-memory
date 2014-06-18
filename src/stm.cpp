@@ -323,12 +323,41 @@ void Stm::delete_cell_connection(Cell_connection* connection)
 	}
 }
 
-void Stm::printStm()
+void Stm::printAll()
 {
-	printf("****Stm Print****\n");
-	printf("current step: %d\n", current_step);
+	printSettings();
+	printStatus();
+	printInnerds();
 
-	printf("****************************************************************\n");
+}
+void Stm::printSettings()
+{
+
+	printf("**************************************************************************\n");
+	printf("****Stm Settings****\n");
+	printf("numCellsPerColumn:%d\t", numCellsPerColumn);
+	printf("numColumns:%d\t", numColumns);
+	printf("maxCellConnections:%d\n", maxCellConnections);
+	if(learn)
+		printf("Learning:ON\t");
+	else
+		printf("Learning:OFF\t");
+	printf("learn_increment:%f\t", learn_increment);
+	printf("learn_decrement:%f\n", learn_decrement);
+	printf("predicted:%f(min strength)   %d(min num active)\n", predicted_min_strength, predicted_min_active);
+	
+}
+void Stm::printStatus()
+{
+	printf("**************************************************************************\n");
+	printf("****Stm Status****\n");
+	printf("current step: %d\n", current_step);
+}
+void Stm::printInnerds()
+{
+
+	printf("**************************************************************************\n");
+	printf("****Stm Innerds****\n");
 	printf("     \tColumn, Cell\tStrength|S cell|R cell\n");
 	for(int i=0; i<column_vec.size(); i++)
 	{
@@ -354,7 +383,6 @@ void Stm::printStm()
 
 		}
 	}
-
 }
 
 void Stm::clean()

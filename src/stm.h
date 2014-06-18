@@ -31,7 +31,10 @@ public:
 	bool getLearning(){return learn;}
 	int getCellsPerColumn(){return numCellsPerColumn;}
 	int getNumColumns(){return numColumns;}
-	void printStm();
+	void printSettings();
+	void printStatus();
+	void printInnerds();
+	void printAll();
 	
 
 private:
