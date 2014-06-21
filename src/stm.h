@@ -1,6 +1,7 @@
 #ifndef STM_H
 #define STM_H
 #include <vector>
+#include <string>
 #include "column.h"
 #include "cell_counter.h"
 class Stm
@@ -16,8 +17,8 @@ public:
 	void preInitNumInputConnections(int numConnections){initNumInputConnections = numConnections;}
 	void init();
 	//input
-	void setColumnActive(int col_index); ////////future: use a better way //////////////////////
-	void clearActiveColumns(); ////////future: use a better way //////////////////////
+	void setColumnActive(int col_index); ////////future: use input parser instead of direct access///
+	void clearActiveColumns(); ////////future: use input parser instead of direct access/////////////
 	
 	//compute active
 	//make predictions
@@ -25,6 +26,10 @@ public:
 	
 	//output predictions	
 	bool isColumnPredicted(int col_index); ///////future: make private ///////////////////////////
+
+	//file import/export 
+	void exportFile(std::string file_path);
+	bool initImport(std::string file_path);
 
 	//other settings
 	void setLearning(bool learning){learn = learning;}
@@ -65,6 +70,7 @@ private:
 	int randSeed;
 	
 	void initConnections();
+	void initStructures();
 	void compute_active();
 	void make_predictions();
 	void new_cell_connection(Cell* c_send, Cell* c_receive);

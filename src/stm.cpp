@@ -1,6 +1,7 @@
 #include "stm.h"
 #include "cell_counter.h"
 #include <cstdio>
+#include <fstream>
 #include <time.h>
 #include <cstdlib>
 
@@ -16,6 +17,11 @@ Stm::~Stm()
 }
 
 void Stm::init()
+{
+	initStructures();
+	initConnections();
+}
+void Stm::initStructures()
 {
 	if(has_init)
 		clean();
@@ -40,11 +46,6 @@ void Stm::init()
 		}
 		column_vec.push_back(col);
 	}
-
-	initConnections();
-	
-
-
 }
 
 void Stm::initConnections()
@@ -66,11 +67,182 @@ void Stm::initConnections()
 			}
 		}
 	}
+}
 
-	//test create connection
-//	new_cell_connection(column_vec[0]->cell_vec[0], column_vec[3]->cell_vec[2]);
-//	new_cell_connection(column_vec[0]->cell_vec[0], column_vec[2]->cell_vec[2]);
-//	new_cell_connection(column_vec[4]->cell_vec[0], column_vec[0]->cell_vec[0]);
+void Stm::exportFile(std::string file_path)
+{
+	std::ofstream out_file(file_path);
+	out_file << "#STM save file: " << file_path << "\n";
+	out_file << "#WARNING: Messing around with this file WILL cause problems.\n";
+	out_file << "#***********************************************************\n";
+	//export settings
+	out_file << "csp " << current_step <<"\n";
+	out_file << "rnd " << randSeed <<"\n";
+	out_file << "cpc " << numCellsPerColumn << "\n";
+	out_file << "ncm " << numColumns << "\n";
+	out_file << "mcc " << maxCellConnections << "\n";
+	out_file << "nic " << numInputConnections << "\n";
+	out_file << "lrn " << learn << "\n";
+	out_file << "lri " << learn_increment << "\n";
+	out_file << "lrd " << learn_decrement << "\n";
+	out_file << "pms " << predicted_min_strength << "\n";
+	out_file << "pma " << predicted_min_active << "\n";
+	out_file << "ini*********************************************************\n";
+	//export cell data
+	for(int i=0;i<column_vec.size();i++)
+	{
+		Column* col = column_vec[i];
+		for(int j=0;j<col->cell_vec.size();j++)
+		{
+			Cell* cell = col->cell_vec[j];
+			//format:   "cl column_index cell_index active_step predicted_step 
+			out_file << "cll " << cell->getColumnIndex() << " " << cell->getCellIndex() << " "
+				<< cell->getActiveStep() << " " << cell->getPredictedStep() << "\n";
+		}
+	}
+
+	//export connections
+	for(int i=0;i<column_vec.size();i++)
+	{
+		Column* col = column_vec[i];
+		for(int j=0;j<col->cell_vec.size();j++)
+		{
+			Cell* cell = col->cell_vec[j];
+			for(int k=0;k<cell->send_connection_vec.size();k++)
+			{
+				Cell_connection* con = cell->send_connection_vec[k];	
+				//format:   "cn send_col send_cell receive_col receive_cell
+				if(con->strength > 0 && con->strength <= 1)//0.000001
+				{
+					out_file << "con " << con->cell_send->getColumnIndex() << " "
+						<< con->cell_send->getCellIndex() << " " 
+						<< con->cell_receive->getColumnIndex() << " "
+						<< con->cell_receive->getCellIndex() << " "
+						<< con->strength << "\n";
+				}
+			}
+		}
+	}
+
+
+
+
+	out_file.close();
+}
+
+bool Stm::initImport(std::string file_path)
+{
+	std::ifstream in_file(file_path);
+	if(!in_file.is_open())
+	{
+		printf("Not opened\n");
+		return false;
+	}
+	char buf[256];
+	while(!in_file.eof())
+	{
+		bool proceed = false;
+		in_file.getline(buf, 256);
+		std::string line(buf);
+		if(line[0] == '#')
+			continue;
+		else if(line[0] == 'c' && line[1] == 's' && line[2] == 'p')
+		{
+			int temp = 0;
+			sscanf(line.c_str(), "csp %d", &temp);
+			current_step = temp;
+		}	
+		else if(line[0] == 'r' && line[1] == 'n' && line[2] == 'd')
+		{
+			sscanf(line.c_str(), "rnd %d", &randSeed);
+		}	
+		else if(line[0] == 'c' && line[1] == 'p' && line[2] == 'c')
+		{
+			sscanf(line.c_str(), "cpc %d", &initCells);
+		}	
+		else if(line[0] == 'n' && line[1] == 'c' && line[2] == 'm')
+		{
+			sscanf(line.c_str(), "ncm %d", &initColumns);
+		}	
+		else if(line[0] == 'm' && line[1] == 'c' && line[2] == 'c')
+		{
+			sscanf(line.c_str(), "mcc %d", &initMaxCellConnections);
+		}	
+		else if(line[0] == 'n' && line[1] == 'i' && line[2] == 'c')
+		{
+			sscanf(line.c_str(), "nic %d", &initNumInputConnections);
+		}	
+		else if(line[0] == 'l' && line[1] == 'r' && line[2] == 'n')
+		{
+			int temp = 0;
+			sscanf(line.c_str(), "lrn %d", &temp);
+			if(temp==1) learn = true;
+			else learn = false;
+		}	
+		else if(line[0] == 'l' && line[1] == 'r' && line[2] == 'i')
+		{
+			float temp = 0.0;
+			sscanf(line.c_str(), "lri %f", &temp);
+			learn_increment = temp;
+		}	
+		else if(line[0] == 'l' && line[1] == 'r' && line[2] == 'd')
+		{
+			float temp = 0.0;
+			sscanf(line.c_str(), "lrd %f", &temp);
+			learn_decrement = temp;
+		}	
+		else if(line[0] == 'p' && line[1] == 'm' && line[2] == 's')
+		{
+			float temp = 0.0;
+			sscanf(line.c_str(), "pms %f", &temp);
+			predicted_min_strength = temp;
+		}	
+		else if(line[0] == 'p' && line[1] == 'm' && line[2] == 'a')
+		{
+			sscanf(line.c_str(), "pma %d", &predicted_min_active);
+		}	
+		else if(line[0] == 'i' && line[1] == 'n' && line[2] == 'i')//init Structure
+		{
+			initStructures();
+		}	
+		else if(line[0] == 'c' && line[1] == 'l' && line[2] == 'l')//import cell data
+		{
+			int col = 0;
+			int cell = 0;
+			int actv_step = 0;
+			int pred_step = 0;
+			sscanf(line.c_str(), "cll %d %d %d %d", &col, &cell, &actv_step, &pred_step);
+			
+			if(col < numColumns && cell < numCellsPerColumn && col > 0 && cell > 0)
+			{
+				column_vec[col]->cell_vec[cell]->setActiveStep(actv_step);
+				column_vec[col]->cell_vec[cell]->setPredictedStep(pred_step);
+			}
+		}	
+		else if(line[0] == 'c' && line[1] == 'l' && line[2] == 'l')//import connection data
+		{
+			int col1 = 0;
+			int cell1 = 0;
+			int col2 = 0;
+			int cell2 = 0;
+			double strength = 0.0;
+			float temp = 0.0;
+			sscanf(line.c_str(), "con %d %d %d %d %f", &col1, &cell1, &col2, &cell2, &temp);
+			strength = temp;
+			if(col1 > 0 && cell1 > 0 && col2 > 0 && cell2 > 0)
+			{
+				if(col1 < numColumns && col2 < numColumns && cell1 < numCellsPerColumn && cell2 < numCellsPerColumn)
+				{
+					Cell* c_send = column_vec[col1]->cell_vec[cell1];
+					Cell* c_receive = column_vec[col2]->cell_vec[cell2];
+					new_cell_connection(c_send,c_receive, strength);
+				}
+			}
+		}
+		
+	}
+	in_file.close();	
+	return true;
 }
 
 void Stm::setColumnActive(int col_index)
@@ -192,7 +364,7 @@ void Stm::compute_active()
 		for(int i=0;i<cell_make_connections_vec.size();i++)
 		{
 			pre_index = rand() % cell_pre_active_vec.size();
-			new_cell_connection(cell_make_connections_vec[i], cell_pre_active_vec[pre_index]);
+			new_cell_connection(cell_make_connections_vec[i], cell_pre_active_vec[pre_index], 0.1);
 			///future: perhaps remove from pre_vec??
 		}	
 	}
@@ -278,8 +450,10 @@ void Stm::new_cell_connection(Cell* c_send, Cell* c_receive, double strength)
 			for(int i=0;i<c_send->send_connection_vec.size();i++)
 			{
 				Cell_connection* con = c_send->send_connection_vec[i];
-				if(con->strength <= 0)
+				if(con->strength < 0.000001)
+				{
 					delete_cell_connection(con);
+				}
 			}
 			connect = false;
 		}
@@ -345,7 +519,7 @@ void Stm::printSettings()
 	printf("learn_increment:%f\t", learn_increment);
 	printf("learn_decrement:%f\n", learn_decrement);
 	printf("predicted:%f(min strength)   %d(min num active)\n", predicted_min_strength, predicted_min_active);
-	
+
 }
 void Stm::printStatus()
 {
