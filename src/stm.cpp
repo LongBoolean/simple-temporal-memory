@@ -316,6 +316,37 @@ void Stm::compute_active()
 				cell_temp_active_vec.push_back(cell);
 			}
 		}
+		if(bursting)//activate all the cells in a column when bursting
+		{
+			for(int j=0;j<col->cell_vec.size();j++)
+			{
+				Cell* cell = col->cell_vec[j];
+				cell_set_active_vec.push_back(cell);
+				if(learn)
+				{
+					cell_make_connections_vec.push_back(cell);
+				}
+
+			}
+			//strengthen/weaken receive connections
+			int index = rand() % col->cell_vec.size();
+			Cell* cell = col->cell_vec[index];
+			for(int k=0;learn && k<cell->receive_connection_vec.size();k++)
+			{
+				Cell_connection* con = cell->receive_connection_vec[k];
+				if(con->cell_send->getActiveStep() == current_step-1)
+				{
+					if(con->strength < 1)
+						con->strength+=learn_increment;
+				}
+				else
+				{
+					if(con->strength > 0)
+						con->strength-=learn_decrement;
+				}
+			}
+		}
+
 		//pick a random cell to become active
 		if(!bursting)
 		{
@@ -337,17 +368,6 @@ void Stm::compute_active()
 					if(con->strength > 0)
 						con->strength-=learn_decrement;
 				}
-			}
-
-		}
-		else//activate all the cells in a column when bursting
-		{
-			for(int j=0;j<col->cell_vec.size();j++)
-			{
-				Cell* cell = col->cell_vec[j];
-				cell_set_active_vec.push_back(cell);
-				if(learn)
-					cell_make_connections_vec.push_back(cell);
 			}
 		}
 	}
