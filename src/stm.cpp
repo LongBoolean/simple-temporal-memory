@@ -303,8 +303,14 @@ void Stm::compute_active()
 {
 	//fornow: go through all of the columns with input
 	for(int i=0;i<inputs_vec.size();i++)
+	//int count = 0;//test
+	//int inputs = 9; //test
+	//while(inputs_vec.size() > 0 && count < inputs)//test
 	{
+		//count++;///test
+		//int i = rand() % inputs_vec.size();//test
 		Column* col = column_vec[inputs_vec[i]];
+		//inputs_vec.erase(inputs_vec.begin()+i);//test
 		bool bursting = true;
 		cell_temp_active_vec.clear();
 		for(int j=0;j<col->cell_vec.size();j++)

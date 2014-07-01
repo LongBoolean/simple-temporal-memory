@@ -34,6 +34,7 @@ public:
 	//other settings
 	void setLearning(bool learning){learn = learning;}
 	bool getLearning(){return learn;}
+	void setPredictedMinActive(int min_active){predicted_min_active = min_active;}
 	int getCellsPerColumn(){return numCellsPerColumn;}
 	int getNumColumns(){return numColumns;}
 	void printSettings();
@@ -66,7 +67,7 @@ private:
 	double learn_increment = 0.05;//future: needs setter
 	double learn_decrement = 0.05;//future: needs setter
 	double predicted_min_strength = 0.2;//future: needs setter
-	int predicted_min_active = 1;//future: needs setter
+	int predicted_min_active = 1;
 	int randSeed;
 	
 	void initConnections();
