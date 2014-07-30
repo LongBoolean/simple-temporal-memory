@@ -1,9 +1,12 @@
 #include "stm.h"
 #include "cell_counter.h"
+#include "column_score.h"
+#include "inputBit.h"
 #include <cstdio>
 #include <fstream>
 #include <time.h>
 #include <cstdlib>
+#include <list>
 
 Stm::Stm()
 {
@@ -36,6 +39,7 @@ void Stm::initStructures()
 	{
 		//create columns
 		Column* col = new Column();
+		col->setIndex(i);
 		for(int j=0; j<numCellsPerColumn; j++)
 		{
 			//create cells
@@ -101,7 +105,7 @@ void Stm::exportFile(std::string file_path)
 		}
 	}
 
-	//export connections
+	//export cell connections
 	for(int i=0;i<column_vec.size();i++)
 	{
 		Column* col = column_vec[i];
@@ -245,29 +249,82 @@ bool Stm::initImport(std::string file_path)
 	return true;
 }
 
-void Stm::setColumnActive(int col_index)
+void Stm::setInputBitActive(int input_bit_index)////////////////////////////////////////////////////////
 {
 	//store into inputs vector for later during processing
-	if(col_index >=0 && col_index < numColumns)
+	if(input_bit_index >=0 && input_bit_index < current_num_input_bits)
 	{
 		//check for duplicates
 		bool duplicate = false;
 		for(int i=0;i<inputs_vec.size();i++)
 		{
-			if(inputs_vec[i] == col_index)
+			if(inputs_vec[i] == input_bit_index)
 			{
 				duplicate = true;
 				break;
 			}
 		}
 		if(!duplicate)
-			inputs_vec.push_back(col_index);
+		{
+			inputs_vec.push_back(input_bit_index);
+			input_bit_vec[input_bit_index]->setActiveStep(current_step+1);
+		}
 	}
 }
 
-void Stm::clearActiveColumns()
+void Stm::clearInputBitActive()
 {
 	inputs_vec.clear();
+}
+
+void Stm::addInputBit()
+{
+	//create and store new input bit
+	InputBit* inputBit = new InputBit();
+	current_num_input_bits++;
+	input_bit_vec.push_back(inputBit);
+	//make random connections with columns
+	int numConnections = .5 * numColumns;//fornow://///////////////////
+	bool testConnections[numColumns];
+	for(int i=0;i<numColumns;i++)
+	{
+		testConnections[i] = false;
+	}
+	for(int i=0;i<numConnections;)
+	{
+		if(column_connection_queue_vec.size() > 0)
+		{
+			int randIndex = rand() % column_connection_queue_vec.size();
+			if(testConnections[column_connection_queue_vec[randIndex]] == false)
+			{
+				//set for later testing
+				testConnections[column_connection_queue_vec[randIndex]] = true;
+				//make connection to column
+				Column* column = column_vec[column_connection_queue_vec[randIndex]];
+				double strength = 0.10 + ((rand() % 3)*0.05);
+				if(inputBit != nullptr && column != nullptr)
+				{
+					Input_connection* connection = new Input_connection();
+					connection->inputBit = inputBit;
+					connection->column = column;
+					connection->strength = strength;
+					inputBit->input_bit_connection_vec.push_back(connection);
+					column->input_bit_connection_vec.push_back(connection);
+				}
+				//remove from the queue vec
+				column_connection_queue_vec.erase(column_connection_queue_vec.begin() + randIndex);
+				i++;
+			}
+		}
+		else
+		{
+			//refill column_connection_queue_vec
+			for(int j=0;j<numColumns;j++)
+			{
+				column_connection_queue_vec.push_back(j);
+			}
+		}
+	}
 }
 
 void Stm::process()
@@ -275,6 +332,7 @@ void Stm::process()
 	if(has_init)
 	{
 		current_step++;
+		compute_overlap();
 		compute_active();
 		make_predictions();	
 		cell_pre_active_vec.clear();
@@ -283,6 +341,7 @@ void Stm::process()
 	}
 
 	inputs_vec.clear();
+	chosen_columns_vec.clear();
 
 }
 
@@ -299,18 +358,136 @@ bool Stm::isColumnPredicted(int col_index)
 	return false; /////////
 }
 
+bool Stm::isInputBitPredicted(int input_bit_index)
+{
+	if(input_bit_index >=0 && input_bit_index < input_bit_vec.size())
+	{
+		if(input_bit_vec[input_bit_index]->getPredictedStep() == current_step+1)
+			return true;	
+	}
+	return false; 
+}
+
+void Stm::compute_overlap()
+{
+	//compute overlap score for the columns
+	std::vector<Column_score*> overlap_compute_vec;
+	for(int i=0;i<inputs_vec.size();i++)
+	{
+		//Go through all of the connections 
+		InputBit* inputBit = input_bit_vec[inputs_vec[i]];
+		for(int j=0;j<inputBit->input_bit_connection_vec.size();j++)
+		{
+			//ignore weak connections
+			//fornow: a value of 0.2
+			if(inputBit->input_bit_connection_vec[j]->strength >= 0.2)
+			{
+			 	bool exist = false;
+				for(int k=0; k<overlap_compute_vec.size();k++)
+				{
+					//increment score
+					if(overlap_compute_vec[k]->column == inputBit->input_bit_connection_vec[j]->column)
+					{
+						overlap_compute_vec[k]->overlap_score++;
+						exist = true;
+					}
+				}	
+				///add to the overlap compute vec 
+				if(!exist)
+				{
+					Column_score* c_score = new Column_score();
+					c_score->column = inputBit->input_bit_connection_vec[j]->column;
+					c_score->overlap_score = 1;
+					overlap_compute_vec.push_back(c_score);
+				}
+			}
+		}	
+	}
+	//choose the top percentage from overlap_compute_vec to be activated
+	int max_slots = numColumns * 0.02;//fornow: a value of 0.02
+	if(max_slots < 1) max_slots = 1;
+	int current_slots = 0;
+	std::list<Column_score*> best_scores_list;
+	std::list<Column_score*>::iterator it;
+	
+	for(int i=0;i<overlap_compute_vec.size();i++)
+	{
+		int compare_score = overlap_compute_vec[i]->overlap_score;
+		it = best_scores_list.begin();
+		bool stop = false; 
+		for(int j=0;!stop && j<current_slots;j++)
+		{
+			if(compare_score > (*it)->overlap_score)
+			{
+				best_scores_list.insert(it, overlap_compute_vec[i]);
+				current_slots++;
+				stop = true;
+			}
+			if(it != best_scores_list.end()) ++it;
+		}
+		if(current_slots < max_slots)
+		{
+			best_scores_list.push_back(overlap_compute_vec[i]);
+			current_slots++;
+		}
+		//ensure that we don't go over the max
+		while(current_slots > max_slots)
+		{
+			best_scores_list.pop_back();
+			current_slots--;
+		}
+		
+	}
+
+	//place the columns into the chosen columns vector
+	chosen_columns_vec.clear();
+	for(std::list<Column_score*>::iterator it = best_scores_list.begin(); it != best_scores_list.end();++it)
+	{
+		chosen_columns_vec.push_back((*it)->column);
+	}
+
+	//modify chosen input_bit connections strengths
+	for(int i=0;i<chosen_columns_vec.size();i++)
+	{
+		//printf("test\n");
+		Column* col = chosen_columns_vec[i];
+		for(int j=0; j<col->input_bit_connection_vec.size();j++)
+		{
+			if(col->input_bit_connection_vec[j]->inputBit->getActiveStep() == current_step)
+			{
+				if(col->input_bit_connection_vec[j]->strength < 1);
+				{
+					//fornow: value of .05
+					col->input_bit_connection_vec[j]->strength += 0.05;
+				//	printf("add_S: %f\tcurrent_s: %d\t bit_s: %d\n", col->input_bit_connection_vec[j]->strength, current_step, col->input_bit_connection_vec[j]->inputBit->getActiveStep());
+				}
+			}
+			else
+			{
+				if(col->input_bit_connection_vec[j]->strength > 0);
+				{
+					//fornow: value of .05
+					col->input_bit_connection_vec[j]->strength -= 0.05;
+					//printf("sub_S: %f\n", col->input_bit_connection_vec[j]->strength);
+				}
+			}
+		}
+	}
+
+	//clean up overlap compute vector and list
+	best_scores_list.clear();
+	for(int i=0;i<overlap_compute_vec.size();i++)
+	{
+		overlap_compute_vec.erase(overlap_compute_vec.begin() + i);
+	}
+	overlap_compute_vec.clear();
+}
 void Stm::compute_active()
 {
 	//fornow: go through all of the columns with input
-	for(int i=0;i<inputs_vec.size();i++)
-	//int count = 0;//test
-	//int inputs = 9; //test
-	//while(inputs_vec.size() > 0 && count < inputs)//test
+	for(int i=0;i<chosen_columns_vec.size();i++)
 	{
-		//count++;///test
-		//int i = rand() % inputs_vec.size();//test
-		Column* col = column_vec[inputs_vec[i]];
-		//inputs_vec.erase(inputs_vec.begin()+i);//test
+		Column* col = chosen_columns_vec[i];
 		bool bursting = true;
 		cell_temp_active_vec.clear();
 		for(int j=0;j<col->cell_vec.size();j++)
@@ -440,17 +617,28 @@ void Stm::make_predictions()
 	{
 		if(cell_count_predicted_vec[i]->count >= predicted_min_active)
 		{
+			//set prediction for cells
 			cell_count_predicted_vec[i]->cell->setPredictedStep(current_step+1);
+			//fornow: set prediction for inputBits
+			Column* col = column_vec[cell_count_predicted_vec[i]->cell->getColumnIndex()];
+			for(int j=0;j<col->input_bit_connection_vec.size();j++)
+			{
+				//forno: a value of 0.2
+				if(col->input_bit_connection_vec[j]->strength > 0.2)
+					col->input_bit_connection_vec[j]->inputBit->setPredictedStep(current_step+1);
+			}
 		}
 		delete cell_count_predicted_vec[i];
 	}
 	cell_count_predicted_vec.clear();
 }
 
+
+
 void Stm::new_cell_connection(Cell* c_send, Cell* c_receive)
 {
 	//double strength = 0.1 + ((rand() % 5)/(double)10);
-	double strength = 0.15 + ((rand() % 3)*0.05);
+	double strength = 0.010 + ((rand() % 3)*0.05);
 	new_cell_connection(c_send, c_receive, strength);
 }
 
@@ -494,6 +682,34 @@ void Stm::new_cell_connection(Cell* c_send, Cell* c_receive, double strength)
 			c_receive->receive_connection_vec.push_back(connection);
 		}
 	}
+}
+
+void Stm::delete_input_bit_connection(Input_connection* connection)
+{
+	if(connection != nullptr)
+	{
+		Column* column = connection->column;
+		InputBit* inputBit = connection->inputBit;
+		//remove the connection from the column 
+		for(int i=0;column!=nullptr && i<column->input_bit_connection_vec.size();i++)
+		{
+			if(column->input_bit_connection_vec[i] == connection)
+			{
+				column->input_bit_connection_vec.erase(column->input_bit_connection_vec.begin()+i);
+			}
+		}
+
+		//remove the connection from the Input Bit
+		for(int i=0;inputBit!=nullptr && i<inputBit->input_bit_connection_vec.size();i++)
+		{
+			if(inputBit->input_bit_connection_vec[i] == connection)
+			{
+				inputBit->input_bit_connection_vec.erase(inputBit->input_bit_connection_vec.begin()+i);
+			}
+		}
+		delete connection;
+	}
+
 }
 
 void Stm::delete_cell_connection(Cell_connection* connection)
@@ -588,6 +804,20 @@ void Stm::printInnerds()
 void Stm::clean()
 {
 	has_init = false;
+	//delete input bits
+	for(int i=0; i<input_bit_vec.size(); i++)
+	{
+		InputBit* input_bit = input_bit_vec[i];
+		for(int j=0;j<input_bit->input_bit_connection_vec.size();j++)
+		{
+			Input_connection*  con = input_bit->input_bit_connection_vec[j];
+			delete_input_bit_connection(con);
+		}
+		delete input_bit;
+	}
+	input_bit_vec.clear();
+
+	//delete cell connections
 	for(int i=0; i<column_vec.size(); i++)
 	{
 		Column* col = column_vec[i];
@@ -603,6 +833,7 @@ void Stm::clean()
 		}
 		//delete col;
 	}
+	//delete cells and columns
 	for(int i=0; i<column_vec.size(); i++)
 	{
 		Column* col = column_vec[i];
@@ -613,6 +844,7 @@ void Stm::clean()
 		}
 		delete col;
 	}
-
 	column_vec.clear();
+
+
 }
