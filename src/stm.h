@@ -29,6 +29,7 @@ public:
 	//output predictions	
 	bool isColumnPredicted(int col_index); ///////future: make private ///////////////////////////
 	bool isInputBitPredicted(int input_bit_index); ///////future: make private ///////////////////////////
+	bool isInputBitActive(int input_bit_index);
 
 	//file import/export 
 	void exportFile(std::string file_path);
@@ -72,10 +73,15 @@ private:
 	int maxCellConnections;
 	int numInputConnections;
 	bool learn;
-	double learn_increment = 0.05;//future: needs setter
-	double learn_decrement = 0.05;//future: needs setter
+	double temporal_learn_increment = 0.05;//future: needs setter
+	double temporal_learn_decrement = 0.05;//future: needs setter
 	double predicted_min_strength = 0.2;//future: needs setter
 	int predicted_min_active = 1;
+	double spatial_learn_increment = 0.02;//future: needs setter
+	double spatial_learn_decrement = 0.02;//future: needs setter
+	double overlap_min_strength = 0.2;//future: needs setter
+	double overlap_chosen_percentage = 0.02;
+	int spatial_min_active = 1;
 	int randSeed;
 	
 	void initConnections();
@@ -86,7 +92,8 @@ private:
 	void new_cell_connection(Cell* c_send, Cell* c_receive);
 	void new_cell_connection(Cell* c_send, Cell* c_receive, double strength);
 	void delete_cell_connection(Cell_connection* connection);
-	//void new_input_bit_connection(InputBit* inputBit, Column* column, double strength);
+	void initEmptyInputBit();
+	void new_input_bit_connection(InputBit* inputBit, Column* column, double strength);
 	void delete_input_bit_connection(Input_connection* connection);
 	void clean();
 };

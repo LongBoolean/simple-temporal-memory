@@ -14,6 +14,8 @@ void test_two_sine_wave();
 void test_rand_num();
 void test_rock_paper_scissors();
 void test_enum_like();
+void test_letters();
+void test_words();
 
 Stm* stm;
 int numberOfBits = 0;
@@ -60,6 +62,9 @@ int main()
 {
 	menu();
 //	test_sine_wave();
+//	test_words();
+//	test_two_sine_wave();
+//	test_rock_paper_scissors();
 	return 0;
 }
 void setup()
@@ -73,32 +78,36 @@ void setup()
 	stm->preInitNumInputConnections(5);//currently does nothing
 	stm->setPredictedMinActive(predictedMinActive);
 	stm->setLearning(true);
-//	*/
 	
-	//stm->init();
+	bool genBits = false;
 	//if(!stm->initImport(save_location))
 	{
 		stm->init();
+		genBits = true;
 	}
 
 	printf("creating input bits...\n");
-	for(int i=0;i<numberOfBits;i++)
+	if(genBits)
 	{
-		stm->addInputBit();
+		for(int i=0; i<numberOfBits;i++)
+		{
+			stm->addInputBit();
+
+		}
 	}
 
 }
 void test_rock_paper_scissors()
 {
-//
-	cols = 12;
+	//
+	cols = 9;//12;
 	cells = 20;
 	connections = cols*cells*.9;
-	predictedMinActive = 2;
+	predictedMinActive = 1;
 	numberOfBits = 12;
 	setup();
 	printf("RockPaperScissors test\n");
-	printf("1: Rock\t2: Paper\t3:Scissors\t0: exit\n");
+	printf("1: Rock \t2: Paper \t3:Scissors \t0: exit\n");
 	int count = 0;
 	bool done = false;
 	int player_choice = 0;
@@ -110,10 +119,11 @@ void test_rock_paper_scissors()
 	int stat_computer_wins = 0;
 	int stat_ties = 0;
 	bool print = false;
+	bool incr = true;
 
 	printf("Please wait for results...\n");
 	//while(!done)
-	while(count < 1000000)
+	while(count < 100000 && !done)
 	{
 
 		count++;
@@ -219,6 +229,7 @@ void test_rock_paper_scissors()
 			}
 			if(player_win)
 			{
+				printf("Player\t\t");
 				stm->setInputBitActive(6);
 			}
 			else
@@ -227,6 +238,7 @@ void test_rock_paper_scissors()
 			}
 			if(computer_win)
 			{
+				printf("Computer\t");
 				stm->setInputBitActive(8);
 			}
 			else
@@ -235,6 +247,7 @@ void test_rock_paper_scissors()
 			}
 			if(tie)
 			{
+				printf("Tie\t\t");
 				stm->setInputBitActive(10);
 			}
 			else
@@ -301,13 +314,22 @@ void test_rock_paper_scissors()
 			done = true;
 		}
 
-	/*	for(int k=0;k<numberOfBits;k++)
+		//*	
+		for(int k=0;k<numberOfBits;k++)
 		{
 			//if(stm->isInputBitPredicted(k))
 			//	printf(" %d",k);
-			if(stm->isInputBitPredicted(k))
+			if (stm->isInputBitPredicted(k) && stm->isInputBitActive(k))
+			{
+				printf("X");
+			}
+			else if(stm->isInputBitPredicted(k))
 			{
 				printf("P");
+			}
+			else if(stm->isInputBitActive(k))
+			{
+				printf(".");
 			}
 			else
 			{
@@ -315,7 +337,7 @@ void test_rock_paper_scissors()
 			}
 		}
 		printf("\n");
-	*/
+		//	*/
 
 	}
 	printf("RockPaperScissors Stats\n");
@@ -387,6 +409,94 @@ void test_rand_num()
 	printf("Stat last No Prediction: %d\n", stat_last_no_prediction);
 
 	stm->exportFile(save_location);
+	//stm->initImport(save_location);
+	clean();
+}
+
+void test_words()
+{
+	cols = 100;
+	cells = 30;
+	connections = cols*cells*.4;
+	predictedMinActive = 1;
+	numberOfBits = 128;
+	setup();
+	int y =0;
+	int iterations = 1;
+	//std::string str = " abc def ghi jkl mno. pqr def ghi stu mno. vwx def yzA ghi mno."
+	std::string str = " The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on. The boy has the key. His key is not in the chest. My chest is far gone. He must find it if he wants to go on.";
+	//	std::string str = " Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy. Jonhithan is a bad boy. Roberto is a good boy. Wendy is not a boy.";
+	//taken from wikipedia 
+	//std::string str = "The domestic cat (Felis catus or Felis silvestris catus) is a small, usually furry, domesticated, and carnivorous mammal. It is often called the housecat when kept as an indoor pet, or simply the cat when there is no need to distinguish it from other felids and felines. Cats are often valued by humans for companionship, and their ability to hunt vermin and household pests. Cats are similar in anatomy to the other felids, with strong, flexible bodies, quick reflexes, sharp retractable claws, and teeth adapted to killing small prey. Cat senses fit a crepuscular and predatory ecological niche. Cats can hear sounds too faint or too high in frequency for human ears, such as those made by mice and other small animals. They can see in near darkness. Like most other mammals, cats have poorer color vision and a better sense of smell than humans. Despite being solitary hunters, cats are a social species, and cat communication includes the use of a variety of vocalizations (mewing, purring, trilling, hissing, growling, and grunting), as well as cat pheromones, and types of cat-specific body language. Cats have a rapid breeding rate. Under controlled breeding, they can be bred and shown as registered pedigree pets, a hobby known as cat fancy. Failure to control the breeding of pet cats by neutering, and the abandonment of former household pets, has resulted in large numbers of feral cats worldwide, requiring population control. Since cats were cult animals in ancient Egypt, they were commonly believed to have been domesticated there, but there may have been instances of domestication as early as the Neolithic from around 9500 years ago (7500 BC). A genetic study in 2007 concluded that domestic cats are descended from African wildcats (Felis silvestris lybica) around 8000 BC, in West Asia. Cats are the most popular pet in the world, and are now found in almost every place where humans live.";
+	for(int i=0;i<iterations;i++)
+	{
+		for(int j=0;j<str.size();j++)
+		{
+			//feed in whole words
+			while(str[j]!=' ')
+			{
+				y = (int)str[j];
+				stm->setInputBitActive(y);
+				printf("%c", str[j]);
+				j++;
+			}
+			stm->process();
+			printf("\t");
+			for(int k=0;k<numberOfBits;k++)
+			{
+				if(stm->isInputBitPredicted(k))
+				{
+					char temp = k;
+					printf("%c ", temp);
+				}
+			}
+			printf("\n");
+
+		}
+	}
+	stm->printSettings();
+	stm->printStatus();
+
+	//stm->exportFile(save_location);
+	//stm->initImport(save_location);
+	clean();
+}
+void test_letters()
+{
+	cols = 50;
+	cells = 100;
+	connections = cols*cells*.2;
+	predictedMinActive = 1;
+	numberOfBits = 128;
+	setup();
+	int y =0;
+	int iterations = 1;
+	//taken from wikipedia 
+	std::string str = "The domestic cat (Felis catus or Felis silvestris catus) is a small, usually furry, domesticated, and carnivorous mammal. It is often called the housecat when kept as an indoor pet, or simply the cat when there is no need to distinguish it from other felids and felines. Cats are often valued by humans for companionship, and their ability to hunt vermin and household pests. Cats are similar in anatomy to the other felids, with strong, flexible bodies, quick reflexes, sharp retractable claws, and teeth adapted to killing small prey. Cat senses fit a crepuscular and predatory ecological niche. Cats can hear sounds too faint or too high in frequency for human ears, such as those made by mice and other small animals. They can see in near darkness. Like most other mammals, cats have poorer color vision and a better sense of smell than humans. Despite being solitary hunters, cats are a social species, and cat communication includes the use of a variety of vocalizations (mewing, purring, trilling, hissing, growling, and grunting), as well as cat pheromones, and types of cat-specific body language. Cats have a rapid breeding rate. Under controlled breeding, they can be bred and shown as registered pedigree pets, a hobby known as cat fancy. Failure to control the breeding of pet cats by neutering, and the abandonment of former household pets, has resulted in large numbers of feral cats worldwide, requiring population control. Since cats were cult animals in ancient Egypt, they were commonly believed to have been domesticated there, but there may have been instances of domestication as early as the Neolithic from around 9500 years ago (7500 BC). A genetic study in 2007 concluded that domestic cats are descended from African wildcats (Felis silvestris lybica) around 8000 BC, in West Asia. Cats are the most popular pet in the world, and are now found in almost every place where humans live.";
+	for(int i=0;i<iterations;i++)
+	{
+		for(int j=0;j<str.size();j++)
+		{
+			y = (int)str[j];
+			stm->setInputBitActive(y);
+			stm->process();
+			printf("%c\t", str[j]);
+			for(int k=0;k<numberOfBits;k++)
+			{
+				if(stm->isInputBitPredicted(k))
+				{
+					char temp = k;
+					printf("%c ", temp);
+				}
+			}
+			printf("\n");
+
+		}
+	}
+	stm->printSettings();
+	stm->printStatus();
+
+	//stm->exportFile(save_location);
 	//stm->initImport(save_location);
 	clean();
 }

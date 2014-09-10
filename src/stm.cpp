@@ -87,10 +87,17 @@ void Stm::exportFile(std::string file_path)
 	out_file << "mcc " << maxCellConnections << "\n";
 	out_file << "nic " << numInputConnections << "\n";
 	out_file << "lrn " << learn << "\n";
-	out_file << "lri " << learn_increment << "\n";
-	out_file << "lrd " << learn_decrement << "\n";
+	out_file << "tli " << temporal_learn_increment << "\n";
+	out_file << "tld " << temporal_learn_decrement << "\n";
 	out_file << "pms " << predicted_min_strength << "\n";
 	out_file << "pma " << predicted_min_active << "\n";
+	//spatial memory settings
+	out_file << "sli " << spatial_learn_increment << "\n";///////////////
+	out_file << "sld " << spatial_learn_decrement << "\n";////////////////
+	out_file << "oms " << overlap_min_strength << "\n";////////////////
+	out_file << "ocp " << overlap_chosen_percentage << "\n";////////////////
+	out_file << "sma " << spatial_min_active << "\n";////////////////
+	out_file << "nib " << current_num_input_bits << "\n";//number of input bits
 	out_file << "ini*********************************************************\n";
 	//export cell data
 	for(int i=0;i<column_vec.size();i++)
@@ -115,7 +122,7 @@ void Stm::exportFile(std::string file_path)
 			for(int k=0;k<cell->send_connection_vec.size();k++)
 			{
 				Cell_connection* con = cell->send_connection_vec[k];	
-				//format:   "cn send_col send_cell receive_col receive_cell
+				//format:   "con send_col send_cell receive_col receive_cell
 				if(con->strength > 0 && con->strength <= 1)//0.000001
 				{
 					out_file << "con " << con->cell_send->getColumnIndex() << " "
@@ -128,8 +135,27 @@ void Stm::exportFile(std::string file_path)
 		}
 	}
 
+	//export inputBits
+	for(int i=0;i<input_bit_vec.size();i++)
+	{
+		InputBit* inbit = input_bit_vec[i];
+		//format:   "inb input_index active_step predicted_step 
+		out_file << "inb " << inbit->getInputIndex() << " " << inbit->getActiveStep() << " " << inbit->getPredictedStep() << "\n";
+	}
 
+	//export inputBit connections
+	for(int i=0;i<input_bit_vec.size();i++)
+	{
+		InputBit* inbit = input_bit_vec[i];
+		for(int j=0;j<inbit->input_bit_connection_vec.size();j++)
+		{
+			Input_connection* con = inbit->input_bit_connection_vec[j];
+			//format:   "ibc input_index column_index strength
+			out_file << "ibc " << con->inputBit->getInputIndex() << " " 
+				<< con->column->getIndex() << " " << con->strength << "\n";
 
+		}
+	}
 
 	out_file.close();
 }
@@ -148,7 +174,7 @@ bool Stm::initImport(std::string file_path)
 		bool proceed = false;
 		in_file.getline(buf, 256);
 		std::string line(buf);
-		if(line[0] == '#')
+		if(line[0] == '#')//comment
 			continue;
 		else if(line[0] == 'c' && line[1] == 's' && line[2] == 'p')
 		{
@@ -160,6 +186,7 @@ bool Stm::initImport(std::string file_path)
 		{
 			sscanf(line.c_str(), "rnd %d", &randSeed);
 		}	
+		//temporal memory settings
 		else if(line[0] == 'c' && line[1] == 'p' && line[2] == 'c')
 		{
 			sscanf(line.c_str(), "cpc %d", &initCells);
@@ -183,17 +210,17 @@ bool Stm::initImport(std::string file_path)
 			if(temp==1) learn = true;
 			else learn = false;
 		}	
-		else if(line[0] == 'l' && line[1] == 'r' && line[2] == 'i')
+		else if(line[0] == 't' && line[1] == 'l' && line[2] == 'i')
 		{
 			float temp = 0.0;
-			sscanf(line.c_str(), "lri %f", &temp);
-			learn_increment = temp;
+			sscanf(line.c_str(), "tli %f", &temp);
+			temporal_learn_increment = temp;
 		}	
-		else if(line[0] == 'l' && line[1] == 'r' && line[2] == 'd')
+		else if(line[0] == 't' && line[1] == 'l' && line[2] == 'd')
 		{
 			float temp = 0.0;
-			sscanf(line.c_str(), "lrd %f", &temp);
-			learn_decrement = temp;
+			sscanf(line.c_str(), "tld %f", &temp);
+			temporal_learn_decrement = temp;
 		}	
 		else if(line[0] == 'p' && line[1] == 'm' && line[2] == 's')
 		{
@@ -205,9 +232,45 @@ bool Stm::initImport(std::string file_path)
 		{
 			sscanf(line.c_str(), "pma %d", &predicted_min_active);
 		}	
+		///spatial memory settings 
+		else if(line[0] == 's' && line[1] == 'l' && line[2] == 'i')
+		{
+			float temp = 0.0;
+			sscanf(line.c_str(), "sli %f", &temp);
+			spatial_learn_increment = temp;
+		}	
+		else if(line[0] == 's' && line[1] == 'l' && line[2] == 'd')
+		{
+			float temp = 0.0;
+			sscanf(line.c_str(), "sld %f", &temp);
+			spatial_learn_decrement = temp;
+		}	
+		else if(line[0] == 'o' && line[1] == 'm' && line[2] == 's')
+		{
+			float temp = 0.0;
+			sscanf(line.c_str(), "oms %f", &temp);
+			overlap_min_strength = temp;
+		}	
+		else if(line[0] == 'o' && line[1] == 'c' && line[2] == 'p')
+		{
+			float temp = 0.0;
+			sscanf(line.c_str(), "ocp %f", &temp);
+			overlap_chosen_percentage = temp;
+		}	
+		else if(line[0] == 's' && line[1] == 'm' && line[2] == 'a')
+		{
+			sscanf(line.c_str(), "sma %d", &spatial_min_active);
+		}	
+/*		else if(line[0] == 'n' && line[1] == 'i' && line[2] == 'b')
+		{
+			sscanf(line.c_str(), "nib %d", &current_num_input_bits);
+		}	
+*/
+
 		else if(line[0] == 'i' && line[1] == 'n' && line[2] == 'i')//init Structure
 		{
 			initStructures();
+			current_num_input_bits = 0;
 		}	
 		else if(line[0] == 'c' && line[1] == 'l' && line[2] == 'l')//import cell data
 		{
@@ -216,14 +279,14 @@ bool Stm::initImport(std::string file_path)
 			int actv_step = 0;
 			int pred_step = 0;
 			sscanf(line.c_str(), "cll %d %d %d %d", &col, &cell, &actv_step, &pred_step);
-			
+
 			if(col < numColumns && cell < numCellsPerColumn && col > 0 && cell > 0)
 			{
 				column_vec[col]->cell_vec[cell]->setActiveStep(actv_step);
 				column_vec[col]->cell_vec[cell]->setPredictedStep(pred_step);
 			}
 		}	
-		else if(line[0] == 'c' && line[1] == 'l' && line[2] == 'l')//import connection data
+		else if(line[0] == 'c' && line[1] == 'o' && line[2] == 'n')//import cell connection data
 		{
 			int col1 = 0;
 			int cell1 = 0;
@@ -243,7 +306,38 @@ bool Stm::initImport(std::string file_path)
 				}
 			}
 		}
-		
+		else if(line[0] == 'i' && line[1] == 'n' && line[2] == 'b')//import inputBit data
+		{
+			int inBit_index = 0;
+			int actv_step = 0;
+			int pred_step = 0;
+			//format:   "inb input_index active_step predicted_step 
+			sscanf(line.c_str(), "inb %d %d %d", &inBit_index, &actv_step, &pred_step);
+			initEmptyInputBit();
+			if(inBit_index < current_num_input_bits)
+			{
+				input_bit_vec[inBit_index]->setActiveStep(actv_step);
+				input_bit_vec[inBit_index]->setPredictedStep(pred_step);
+			}
+		}
+		else if(line[0] == 'i' && line[1] == 'b' && line[2] == 'c')//import inputBit connections
+		{
+			int inBit_index = 0;
+			int col_index = 0;
+			double strength = 0.0;
+			float temp = 0.0;
+			//format:   "ibc input_index column_index strength
+			sscanf(line.c_str(), "ibc %d %d %f", &inBit_index, &col_index, &temp);
+			strength = temp;
+			if(inBit_index < current_num_input_bits && col_index < numColumns)
+			{
+				InputBit* inBit = input_bit_vec[inBit_index];	
+				Column* col = column_vec[col_index];
+				new_input_bit_connection(inBit, col, strength);
+			}
+			
+		}
+
 	}
 	in_file.close();	
 	return true;
@@ -277,14 +371,23 @@ void Stm::clearInputBitActive()
 	inputs_vec.clear();
 }
 
+void Stm::initEmptyInputBit()
+{
+	//create and store new input bit
+	InputBit* inputBit = new InputBit();
+	inputBit->setInputIndex(current_num_input_bits);
+	current_num_input_bits++;
+	input_bit_vec.push_back(inputBit);
+}
 void Stm::addInputBit()
 {
 	//create and store new input bit
 	InputBit* inputBit = new InputBit();
+	inputBit->setInputIndex(current_num_input_bits);
 	current_num_input_bits++;
 	input_bit_vec.push_back(inputBit);
 	//make random connections with columns
-	int numConnections = .5 * numColumns;//fornow://///////////////////
+	int numConnections = .5 * (double)numColumns;//fornow://///////////////////
 	bool testConnections[numColumns];
 	for(int i=0;i<numColumns;i++)
 	{
@@ -302,15 +405,7 @@ void Stm::addInputBit()
 				//make connection to column
 				Column* column = column_vec[column_connection_queue_vec[randIndex]];
 				double strength = 0.10 + ((rand() % 3)*0.05);
-				if(inputBit != nullptr && column != nullptr)
-				{
-					Input_connection* connection = new Input_connection();
-					connection->inputBit = inputBit;
-					connection->column = column;
-					connection->strength = strength;
-					inputBit->input_bit_connection_vec.push_back(connection);
-					column->input_bit_connection_vec.push_back(connection);
-				}
+				new_input_bit_connection(inputBit, column, strength);
 				//remove from the queue vec
 				column_connection_queue_vec.erase(column_connection_queue_vec.begin() + randIndex);
 				i++;
@@ -324,6 +419,18 @@ void Stm::addInputBit()
 				column_connection_queue_vec.push_back(j);
 			}
 		}
+	}
+}
+void Stm::new_input_bit_connection(InputBit* inputBit, Column* column, double strength)
+{
+	if(inputBit != nullptr && column != nullptr)
+	{
+		Input_connection* connection = new Input_connection();
+		connection->inputBit = inputBit;
+		connection->column = column;
+		connection->strength = strength;
+		inputBit->input_bit_connection_vec.push_back(connection);
+		column->input_bit_connection_vec.push_back(connection);
 	}
 }
 
@@ -368,6 +475,16 @@ bool Stm::isInputBitPredicted(int input_bit_index)
 	return false; 
 }
 
+bool Stm::isInputBitActive(int input_bit_index)
+{
+	if(input_bit_index >=0 && input_bit_index < input_bit_vec.size())
+	{
+		if(input_bit_vec[input_bit_index]->getActiveStep() == current_step)
+			return true;	
+	}
+	return false; 
+}
+
 void Stm::compute_overlap()
 {
 	//compute overlap score for the columns
@@ -379,10 +496,9 @@ void Stm::compute_overlap()
 		for(int j=0;j<inputBit->input_bit_connection_vec.size();j++)
 		{
 			//ignore weak connections
-			//fornow: a value of 0.2
-			if(inputBit->input_bit_connection_vec[j]->strength >= 0.2)
+			if(inputBit->input_bit_connection_vec[j]->strength >= overlap_min_strength)
 			{
-			 	bool exist = false;
+				bool exist = false;
 				for(int k=0; k<overlap_compute_vec.size();k++)
 				{
 					//increment score
@@ -404,12 +520,12 @@ void Stm::compute_overlap()
 		}	
 	}
 	//choose the top percentage from overlap_compute_vec to be activated
-	int max_slots = numColumns * 0.02;//fornow: a value of 0.02
-	if(max_slots < 1) max_slots = 1;
+	int max_slots = numColumns * overlap_chosen_percentage;
+	if(max_slots < spatial_min_active) max_slots = spatial_min_active;
 	int current_slots = 0;
 	std::list<Column_score*> best_scores_list;
 	std::list<Column_score*>::iterator it;
-	
+
 	for(int i=0;i<overlap_compute_vec.size();i++)
 	{
 		int compare_score = overlap_compute_vec[i]->overlap_score;
@@ -436,7 +552,7 @@ void Stm::compute_overlap()
 			best_scores_list.pop_back();
 			current_slots--;
 		}
-		
+
 	}
 
 	//place the columns into the chosen columns vector
@@ -447,7 +563,7 @@ void Stm::compute_overlap()
 	}
 
 	//modify chosen input_bit connections strengths
-	for(int i=0;i<chosen_columns_vec.size();i++)
+	for(int i=0;learn && i<chosen_columns_vec.size();i++)
 	{
 		//printf("test\n");
 		Column* col = chosen_columns_vec[i];
@@ -455,22 +571,22 @@ void Stm::compute_overlap()
 		{
 			if(col->input_bit_connection_vec[j]->inputBit->getActiveStep() == current_step)
 			{
-				if(col->input_bit_connection_vec[j]->strength < 1);
+				if(col->input_bit_connection_vec[j]->strength < 1 - spatial_learn_increment)
 				{
-					//fornow: value of .05
-					col->input_bit_connection_vec[j]->strength += 0.05;
-				//	printf("add_S: %f\tcurrent_s: %d\t bit_s: %d\n", col->input_bit_connection_vec[j]->strength, current_step, col->input_bit_connection_vec[j]->inputBit->getActiveStep());
+					//increment strengths
+					col->input_bit_connection_vec[j]->strength += spatial_learn_increment;
 				}
 			}
 			else
 			{
-				if(col->input_bit_connection_vec[j]->strength > 0);
+				if(col->input_bit_connection_vec[j]->strength > 0.0 + spatial_learn_decrement)
 				{
-					//fornow: value of .05
-					col->input_bit_connection_vec[j]->strength -= 0.05;
-					//printf("sub_S: %f\n", col->input_bit_connection_vec[j]->strength);
+					//decrement strengths
+					col->input_bit_connection_vec[j]->strength -= spatial_learn_decrement;
 				}
 			}
+			//if(col->input_bit_connection_vec[j]->strength > 1)
+					//printf("\n%f \n", col->input_bit_connection_vec[j]->strength);
 		}
 	}
 
@@ -520,12 +636,12 @@ void Stm::compute_active()
 				if(con->cell_send->getActiveStep() == current_step-1)
 				{
 					if(con->strength < 1)
-						con->strength+=learn_increment;
+						con->strength+=temporal_learn_increment;
 				}
 				else
 				{
 					if(con->strength > 0)
-						con->strength-=learn_decrement;
+						con->strength-=temporal_learn_decrement;
 				}
 			}
 		}
@@ -544,12 +660,12 @@ void Stm::compute_active()
 				if(con->cell_send->getActiveStep() == current_step-1)
 				{
 					if(con->strength < 1)
-						con->strength+=learn_increment;
+						con->strength+=temporal_learn_increment;
 				}
 				else
 				{
 					if(con->strength > 0)
-						con->strength-=learn_decrement;
+						con->strength-=temporal_learn_decrement;
 				}
 			}
 		}
@@ -758,8 +874,8 @@ void Stm::printSettings()
 		printf("Learning:ON\t");
 	else
 		printf("Learning:OFF\t");
-	printf("learn_increment:%f\t", learn_increment);
-	printf("learn_decrement:%f\n", learn_decrement);
+	printf("temporal_learn_increment:%f\t", temporal_learn_increment);
+	printf("temporal_learn_decrement:%f\n", temporal_learn_decrement);
 	printf("predicted:%f(min strength)   %d(min num active)\n", predicted_min_strength, predicted_min_active);
 
 }
