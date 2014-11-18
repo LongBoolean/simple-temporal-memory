@@ -7,6 +7,7 @@
 #include <time.h>
 #include <cstdlib>
 #include <list>
+#include <math.h>
 
 Stm::Stm()
 {
@@ -21,8 +22,33 @@ Stm::~Stm()
 
 void Stm::init()
 {
+	file_init = false;
 	initStructures();
 	initConnections();
+}
+void Stm::postInitFinalizeInputs()
+{
+	for(int i=0;i<entrys_vec.size();i++)
+	{
+		if(!entrys_vec[i]->isFinalized())
+		{
+			//setup and use input entry
+			if(!file_init)//file import takes care of this
+			{
+				//set starting bit
+				entrys_vec[i]->setStartInputIndex(current_num_input_bits);
+				//add input bits 
+				addInputBits(entrys_vec[i]->getInputSize());
+			}
+			
+			entrys_vec[i]->finalize();
+		}
+	}
+	if(!file_init)
+	{
+		initInputBitConnections();
+	}
+	
 }
 void Stm::initStructures()
 {
@@ -72,6 +98,47 @@ void Stm::initConnections()
 		}
 	}
 }
+void Stm::initInputBitConnections()
+{
+	for(int h=0;h<input_bit_vec.size();h++)
+	{
+		InputBit* inputBit = input_bit_vec[h];
+		//make random connections with columns
+		int numConnections = .5 * (double)numColumns;//fornow://///////////////////
+		bool testConnections[numColumns];
+		for(int i=0;i<numColumns;i++)
+		{
+			testConnections[i] = false;
+		}
+		for(int i=0;i<numConnections;)
+		{
+			if(column_connection_queue_vec.size() > 0)
+			{
+				int randIndex = rand() % column_connection_queue_vec.size();
+				if(testConnections[column_connection_queue_vec[randIndex]] == false)
+				{
+					//set for later testing
+					testConnections[column_connection_queue_vec[randIndex]] = true;
+					//make connection to column
+					Column* column = column_vec[column_connection_queue_vec[randIndex]];
+					double strength = 0.10 + ((rand() % 3)*0.05);
+					new_input_bit_connection(inputBit, column, strength);
+					//remove from the queue vec
+					column_connection_queue_vec.erase(column_connection_queue_vec.begin() + randIndex);
+					i++;
+				}
+			}
+			else
+			{
+				//refill column_connection_queue_vec
+				for(int j=0;j<numColumns;j++)
+				{
+					column_connection_queue_vec.push_back(j);
+				}
+			}
+		}
+	}
+}
 
 void Stm::exportFile(std::string file_path)
 {
@@ -97,7 +164,7 @@ void Stm::exportFile(std::string file_path)
 	out_file << "oms " << overlap_min_strength << "\n";////////////////
 	out_file << "ocp " << overlap_chosen_percentage << "\n";////////////////
 	out_file << "sma " << spatial_min_active << "\n";////////////////
-	out_file << "nib " << current_num_input_bits << "\n";//number of input bits
+	//out_file << "nib " << current_num_input_bits << "\n";//number of input bits
 	out_file << "ini*********************************************************\n";
 	//export cell data
 	for(int i=0;i<column_vec.size();i++)
@@ -134,6 +201,7 @@ void Stm::exportFile(std::string file_path)
 			}
 		}
 	}
+	//todo: export inputEntrys
 
 	//export inputBits
 	for(int i=0;i<input_bit_vec.size();i++)
@@ -168,6 +236,10 @@ bool Stm::initImport(std::string file_path)
 		printf("Not opened\n");
 		return false;
 	}
+	file_init = true;
+	if(has_init)
+		clean();
+	has_init = true;
 	char buf[256];
 	while(!in_file.eof())
 	{
@@ -261,11 +333,11 @@ bool Stm::initImport(std::string file_path)
 		{
 			sscanf(line.c_str(), "sma %d", &spatial_min_active);
 		}	
-/*		else if(line[0] == 'n' && line[1] == 'i' && line[2] == 'b')
-		{
-			sscanf(line.c_str(), "nib %d", &current_num_input_bits);
-		}	
-*/
+		/*		else if(line[0] == 'n' && line[1] == 'i' && line[2] == 'b')
+				{
+				sscanf(line.c_str(), "nib %d", &current_num_input_bits);
+				}	
+		 */
 
 		else if(line[0] == 'i' && line[1] == 'n' && line[2] == 'i')//init Structure
 		{
@@ -313,7 +385,7 @@ bool Stm::initImport(std::string file_path)
 			int pred_step = 0;
 			//format:   "inb input_index active_step predicted_step 
 			sscanf(line.c_str(), "inb %d %d %d", &inBit_index, &actv_step, &pred_step);
-			initEmptyInputBit();
+			addInputBit();
 			if(inBit_index < current_num_input_bits)
 			{
 				input_bit_vec[inBit_index]->setActiveStep(actv_step);
@@ -335,11 +407,12 @@ bool Stm::initImport(std::string file_path)
 				Column* col = column_vec[col_index];
 				new_input_bit_connection(inBit, col, strength);
 			}
-			
+
 		}
 
 	}
 	in_file.close();	
+	postInitFinalizeInputs();
 	return true;
 }
 
@@ -361,7 +434,6 @@ void Stm::setInputBitActive(int input_bit_index)////////////////////////////////
 		if(!duplicate)
 		{
 			inputs_vec.push_back(input_bit_index);
-			input_bit_vec[input_bit_index]->setActiveStep(current_step+1);
 		}
 	}
 }
@@ -371,14 +443,171 @@ void Stm::clearInputBitActive()
 	inputs_vec.clear();
 }
 
-void Stm::initEmptyInputBit()
+void Stm::postInitAddInputDouble(std::string identifier, double min, double max, int numBuckets, int bucketWidth, int inputWidth)
 {
-	//create and store new input bit
-	InputBit* inputBit = new InputBit();
-	inputBit->setInputIndex(current_num_input_bits);
-	current_num_input_bits++;
-	input_bit_vec.push_back(inputBit);
+	addInputEntry(identifier, DOUBLE, min, max, numBuckets, bucketWidth, inputWidth);
 }
+
+void Stm::addInputEntry(std::string identifier, enum e_EntryType entryType, double min, double max, int numBuckets, int bucketWidth, int inputWidth)
+{
+	//check for duplicates
+	bool unique = true;
+	for(int i=0;unique && i<entrys_vec.size();i++)
+	{
+		if(entrys_vec[i] != nullptr)
+		{
+			if(entrys_vec[i]->getIdentifier().compare(identifier) == 0)
+			{
+				unique = false;
+			}
+		}	
+	}
+	if(unique)
+	{
+		//create input entry
+		InputEntry* entry = new InputEntry();
+		entry->setIdentifier(identifier);
+		entry->setType(entryType);
+		entry->setNumBuckets(numBuckets);
+		entry->setBucketWidth(bucketWidth);
+		entry->setInputWidth(inputWidth);
+		entry->setRange(min, max);
+		//store in vector
+		entrys_vec.push_back(entry);
+	}
+}
+
+bool Stm::getInputEntryHasPrediction(std::string identifier)
+{
+	for(int i=0;i<entrys_vec.size();i++)
+	{
+		InputEntry* entry = entrys_vec[i];
+		if(identifier.compare(entry->getIdentifier()) == 0)
+		{
+			return entry->hasPrediction();
+		}
+	}
+	return false;
+}
+double Stm::getInputEntryPrediction(std::string identifier)
+{
+	for(int i=0;i<entrys_vec.size();i++)
+	{
+		InputEntry* entry = entrys_vec[i];
+		if(identifier.compare(entry->getIdentifier()) == 0)
+		{
+			if(entry->getPredictionStep() != current_step)
+			{
+				int first = entry->getStartInputIndex();
+				int last = entry->getLastInputIndex();
+				//calculate prediction index
+				int current_length = 0;
+				int longest_length = 0;
+				int current_sum = 0;
+				int total_sum = 0;
+				int total_num_bits = 0;
+				for(int j=first;j<=last;j++)
+				{
+					if(input_bit_vec[j]->getPredictedStep() == current_step + 1)
+					{
+						current_length++;
+						current_sum +=j;
+					}
+					else
+					{
+						if(current_length == longest_length)
+						{
+							total_sum += current_sum;
+							total_num_bits += current_length;
+						}
+						else if(current_length > longest_length)
+						{
+							longest_length = current_length;
+							total_sum = current_sum;
+							total_num_bits = current_length;
+						}
+						current_length = 0;
+						current_sum = 0;
+					}
+				}
+				if(current_length == longest_length)
+				{
+					total_sum += current_sum;
+					total_num_bits += current_length;
+				}
+				else if(current_length > longest_length)
+				{
+					longest_length = current_length;
+					total_sum = current_sum;
+					total_num_bits = current_length;
+				}
+				double average_index = 0;
+				if(total_num_bits != 0)
+				{
+					average_index = (double) total_sum / (double) total_num_bits;
+				}
+				//calculate prediction percentage
+				double raw_percentage = (average_index - first) / (double)(last - first);
+				//set prediction
+				entry->setPredictionStep(current_step);
+				if(total_num_bits != 0)//keep old prediction if no new possible
+				{
+					entry->setRawPrediction(raw_percentage);
+					entry->setHasPrediction(true);
+				}
+				else
+				{
+					entry->setHasPrediction(false);
+				}
+			}
+		}
+		double min = entry->getRangeMin();
+		double max = entry->getRangeMax();
+		double value = (entry->getRawPrediction() * (max - min)) + min ;
+		return value;//
+
+	}
+	return 0;
+}
+
+void Stm::setInputEntryValue(std::string identifier, double value)
+{
+	bool done = false;
+	for(int i=0;!done && i<entrys_vec.size();i++)
+	{
+		InputEntry* entry = entrys_vec[i];
+		if(identifier.compare(entry->getIdentifier()) == 0)
+		{
+
+			//bounds checking and enforcement
+			double min = entry->getRangeMin();
+			double max = entry->getRangeMax();
+			if(value < min)
+			{
+				value = min;
+			}
+			else if(value > max)
+			{
+				value = max;
+			}
+
+			//calculate percentage
+			double value_per = 0;
+			switch(entry->getType())
+			{
+				case DOUBLE:
+					value_per = (value - min)/(max - min);
+					break;
+				default:
+					break;
+			}
+			entry->setRawActive(value_per);
+
+			done = true;
+		}
+	}
+}
+
 void Stm::addInputBit()
 {
 	//create and store new input bit
@@ -386,41 +615,16 @@ void Stm::addInputBit()
 	inputBit->setInputIndex(current_num_input_bits);
 	current_num_input_bits++;
 	input_bit_vec.push_back(inputBit);
-	//make random connections with columns
-	int numConnections = .5 * (double)numColumns;//fornow://///////////////////
-	bool testConnections[numColumns];
-	for(int i=0;i<numColumns;i++)
+}
+
+void Stm::addInputBits(int num)
+{
+	for(int i=0;i<num;i++)
 	{
-		testConnections[i] = false;
-	}
-	for(int i=0;i<numConnections;)
-	{
-		if(column_connection_queue_vec.size() > 0)
-		{
-			int randIndex = rand() % column_connection_queue_vec.size();
-			if(testConnections[column_connection_queue_vec[randIndex]] == false)
-			{
-				//set for later testing
-				testConnections[column_connection_queue_vec[randIndex]] = true;
-				//make connection to column
-				Column* column = column_vec[column_connection_queue_vec[randIndex]];
-				double strength = 0.10 + ((rand() % 3)*0.05);
-				new_input_bit_connection(inputBit, column, strength);
-				//remove from the queue vec
-				column_connection_queue_vec.erase(column_connection_queue_vec.begin() + randIndex);
-				i++;
-			}
-		}
-		else
-		{
-			//refill column_connection_queue_vec
-			for(int j=0;j<numColumns;j++)
-			{
-				column_connection_queue_vec.push_back(j);
-			}
-		}
+		addInputBit();
 	}
 }
+
 void Stm::new_input_bit_connection(InputBit* inputBit, Column* column, double strength)
 {
 	if(inputBit != nullptr && column != nullptr)
@@ -438,6 +642,8 @@ void Stm::process()
 {
 	if(has_init)
 	{
+		updateBitsFromEntrys();
+		trimInputBits();
 		current_step++;
 		compute_overlap();
 		compute_active();
@@ -450,6 +656,51 @@ void Stm::process()
 	inputs_vec.clear();
 	chosen_columns_vec.clear();
 
+}
+
+void Stm::updateBitsFromEntrys()
+{
+	for(int i=0;i<entrys_vec.size();i++)
+	{
+		InputEntry* entry = entrys_vec[i];
+		int first = entrys_vec[i]->getStartInputIndex();
+		int last = entrys_vec[i]->getLastInputIndex();
+		int size = entrys_vec[i]->getInputSize();
+		int input_width = entrys_vec[i]->getInputWidth();
+		double active_value = entrys_vec[i]->getRawActive();
+		//find bounds
+		int start = floor((active_value * size) - (input_width/2.0) + 0.5) + first;
+		int end = floor((active_value * size) + (input_width/2.0) + 0.5) + first;
+		if(start < first)
+		{
+			start = first;
+			end = start + input_width - 1;
+		}
+		else if(end > last)
+		{
+			end = last;
+			start = last - input_width + 1;
+		}
+		for(int j=start; j<end; j++)
+		{
+			setInputBitActive(j);
+		}
+	}
+}
+void Stm::trimInputBits()
+{
+			
+	int trim_amount = inputs_vec.size() * trim_input_percentage;
+	for(int i=0;i<trim_amount;i++)
+	{
+		int index = rand() % inputs_vec.size();
+	//	inputs_vec.erase(inputs_vec.begin() + index);
+	}
+	//increment the input bits for upcomming step
+	for(int i=0;i<inputs_vec.size();i++)
+	{
+		input_bit_vec[inputs_vec[i]]->setActiveStep(current_step+1);
+	}
 }
 
 bool Stm::isColumnPredicted(int col_index)
@@ -586,7 +837,7 @@ void Stm::compute_overlap()
 				}
 			}
 			//if(col->input_bit_connection_vec[j]->strength > 1)
-					//printf("\n%f \n", col->input_bit_connection_vec[j]->strength);
+			//printf("\n%f \n", col->input_bit_connection_vec[j]->strength);
 		}
 	}
 
@@ -857,6 +1108,7 @@ void Stm::delete_cell_connection(Cell_connection* connection)
 
 void Stm::printAll()
 {
+	//todo: these functions dont print everything, update all of these functions
 	printSettings();
 	printStatus();
 	printInnerds();
@@ -920,6 +1172,14 @@ void Stm::printInnerds()
 void Stm::clean()
 {
 	has_init = false;
+	//delete input entrys
+	for(int i=0; i<entrys_vec.size(); i++)
+	{
+		InputEntry* entry = entrys_vec[i];
+		delete entry;
+	}
+	entrys_vec.clear();
+
 	//delete input bits
 	for(int i=0; i<input_bit_vec.size(); i++)
 	{
@@ -961,6 +1221,7 @@ void Stm::clean()
 		delete col;
 	}
 	column_vec.clear();
+
 
 
 }

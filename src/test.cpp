@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdio>
+#include <unistd.h>
 #include <string>
 #include <math.h>
 #define PI 3.1415
@@ -16,6 +17,7 @@ void test_rock_paper_scissors();
 void test_enum_like();
 void test_letters();
 void test_words();
+void test_follow();
 
 Stm* stm;
 int numberOfBits = 0;
@@ -60,11 +62,12 @@ void menu()
 
 int main()
 {
-	menu();
+//	menu();
 //	test_sine_wave();
 //	test_words();
-//	test_two_sine_wave();
+	test_two_sine_wave();
 //	test_rock_paper_scissors();
+//	test_follow();
 	return 0;
 }
 void setup()
@@ -86,6 +89,7 @@ void setup()
 		genBits = true;
 	}
 
+/*
 	printf("creating input bits...\n");
 	if(genBits)
 	{
@@ -95,7 +99,148 @@ void setup()
 
 		}
 	}
+*/
 
+}
+void test_follow()
+{
+	int width = 20;
+	int height = 20;
+	cols = 60;
+	cells = 30;
+	connections = cols*cells*.4;
+	predictedMinActive = 1;
+	setup();
+
+	stm->postInitAddInputDouble("pain",0,30,16,4,2);
+	stm->postInitAddInputDouble("distanceX",-width,width,16,4,2);
+	stm->postInitAddInputDouble("distanceY",-height,height,16,4,2);
+	stm->postInitAddInputDouble("directionX",-1,1,8,2,2);
+	stm->postInitAddInputDouble("directionY",-1,1,8,2,2);
+	stm->postInitAddInputDouble("aiX",0,width,16,4,2);
+	stm->postInitAddInputDouble("aiY",0,height,16,4,2);
+	stm->postInitAddInputDouble("dotX",0,width,16,4,2);
+	stm->postInitAddInputDouble("dotY",0,height,16,4,2);
+	stm->postInitFinalizeInputs();
+	//int iterations = 1000;
+	bool clear = false;
+	int iterations = 500000;
+	int dot_x =0;// rand() % width;
+	int dot_y =0;// rand() % height;
+	int dot_dir_x = 1;
+	int dot_dir_y = 1;
+	//ai vars
+	int ai_x = width/2;//rand() % width;
+	int ai_y = height/2;//rand() % height;
+	int ai_dir_x = 1;
+	int ai_dir_y = 1;
+	double pain_avg = 0;
+	double pain = 0;
+	double guess_pain = 0;
+	for(int i=0;i<iterations;i++)
+	{
+		//print map
+		for(int j=0;i%1==0 && j<height;j++)
+		{
+			for(int k=0;k<width;k++)
+			{
+				if(j==ai_x && k==ai_y)
+					printf("C ");
+				else if(j==dot_x && k==dot_y)
+					printf("* ");
+				else
+					printf(". ");
+			}
+			printf("\n");
+			clear = true;
+		}
+		printf("Average Pain: %f\nCurrent Pain: %f\nGuess Pain: %f\n", pain_avg, pain, guess_pain);
+		if(clear)
+		{
+			printf("\n");
+			clear = false;
+		}
+		usleep(100000);
+		//dot movement
+/*		if(i%20==0)
+		{
+			dot_x = rand()%width;
+			dot_y = rand()%height;
+		}
+ */
+		if(i%20==0)
+		{
+			int which = rand() % 2;
+			if(which == 1)
+				dot_dir_x = rand()%3 - 1;
+			else
+				dot_dir_y = rand()%3 - 1;
+		}
+
+		//dot_x += dot_dir_x;
+		dot_y += dot_dir_y;
+
+		if(dot_x < 0 || dot_x > width-1)
+			dot_x -= dot_dir_x;
+		if(dot_y < 0 || dot_y > height-1)
+			dot_y -= dot_dir_y;
+		//ai movement
+		ai_x += ai_dir_x;
+		ai_y += ai_dir_y;
+		if(ai_x < 0 || ai_x > width-1)
+			ai_x -= ai_dir_x;
+		if(ai_y < 0 || ai_y > height-1)
+			ai_y -= ai_dir_y;
+		if(i%15==0)
+		{
+			//calculate pain
+			pain = sqrt((ai_x-dot_x)*(ai_x-dot_x) + (ai_y-dot_y)*(ai_y-dot_y));
+			if(pain_avg != 0)
+			{
+				pain_avg += pain;
+				pain_avg = pain_avg/2;
+			}
+			else
+			{
+				pain_avg = pain;
+			}
+			stm->setInputEntryValue("pain", pain);
+			//update vars
+			stm->setInputEntryValue("distanceX", ai_x-dot_x);
+			stm->setInputEntryValue("distanceY", ai_y-dot_y);
+			stm->setInputEntryValue("directionX", ai_dir_x);
+			stm->setInputEntryValue("directiony", ai_dir_y);
+			stm->setInputEntryValue("aiX", ai_x);
+			stm->setInputEntryValue("aiy", ai_y);
+			stm->setInputEntryValue("dotX", dot_x);
+			stm->setInputEntryValue("dotY", dot_y);
+
+			stm->process();
+			//make decisions
+			guess_pain = stm->getInputEntryPrediction("pain");
+			bool has_guess = stm->getInputEntryHasPrediction("pain");
+			//if(has_guess && guess_pain + (pain*0.2) < pain)
+			//if(guess_pain > pain)
+			if(guess_pain * 1.1 < pain)// && guess_pain < 10)
+			{
+				ai_dir_x = floor(stm->getInputEntryPrediction("directionX")+0.5);
+				has_guess = stm->getInputEntryHasPrediction("directionX");
+				if(!has_guess)
+					ai_dir_x = rand()%3 -1;
+
+				ai_dir_y = floor(stm->getInputEntryPrediction("directionY")+0.5);
+				has_guess = stm->getInputEntryHasPrediction("directionY");
+				if(!has_guess)
+					ai_dir_y = rand()%3 -1;
+			}
+			else
+			{
+				ai_dir_x = rand()%3 -1;
+				ai_dir_y = rand()%3 -1;
+			}
+		}
+
+	}
 }
 void test_rock_paper_scissors()
 {
@@ -106,6 +251,12 @@ void test_rock_paper_scissors()
 	predictedMinActive = 1;
 	numberOfBits = 12;
 	setup();
+	stm->postInitAddInputDouble("p_choice",1,3,8,2,2);
+	stm->postInitAddInputDouble("c_choice",1,3,8,2,2);
+	stm->postInitAddInputDouble("p_win",1,4,4,2,2);
+	stm->postInitAddInputDouble("c_win",1,4,4,2,2);
+	stm->postInitAddInputDouble("tie",1,4,4,2,2);
+	stm->postInitFinalizeInputs();
 	printf("RockPaperScissors test\n");
 	printf("1: Rock \t2: Paper \t3:Scissors \t0: exit\n");
 	int count = 0;
@@ -199,81 +350,49 @@ void test_rock_paper_scissors()
 			   --Tie		10 11
 
 			 */
-			switch(player_choice)
-			{
-				case 1:
-					stm->setInputBitActive(0);
-					break;
-				case 2:
-					stm->setInputBitActive(1);
-					break;
-				case 3:
-					stm->setInputBitActive(2);
-					break;
-				default:
-					break;
-			}
-			switch(computer_choice)
-			{
-				case 1:
-					stm->setInputBitActive(3);
-					break;
-				case 2:
-					stm->setInputBitActive(4);
-					break;
-				case 3:
-					stm->setInputBitActive(5);
-					break;
-				default:
-					break;
-			}
+			stm->setInputEntryValue("p_choice", player_choice);
+			stm->setInputEntryValue("c_choice", computer_choice);
 			if(player_win)
 			{
 				printf("Player\t\t");
-				stm->setInputBitActive(6);
+				stm->setInputEntryValue("p_win", 3);
 			}
 			else
 			{
-				stm->setInputBitActive(7);
+				stm->setInputEntryValue("p_win", 2);
 			}
 			if(computer_win)
 			{
 				printf("Computer\t");
-				stm->setInputBitActive(8);
+				stm->setInputEntryValue("c_win", 3);
 			}
 			else
 			{
-				stm->setInputBitActive(9);
+				stm->setInputEntryValue("c_win", 2);
 			}
 			if(tie)
 			{
 				printf("Tie\t\t");
-				stm->setInputBitActive(10);
+				stm->setInputEntryValue("tie", 3);
 			}
 			else
 			{
-				stm->setInputBitActive(11);
+				stm->setInputEntryValue("tie", 2);
 			}
 
 			//stm makes choice for next round
 			stm->process();
-			if(stm->isInputBitPredicted(8))//predict win
+			double raw_c_choice = (int) floor(stm->getInputEntryPrediction("c_choice")+0.5);
+
+			//printf("c_win: %f\n", stm->getInputEntryPrediction("c_win"));
+			//printf("p_win: %f\n", stm->getInputEntryPrediction("p_win"));
+			if(stm->getInputEntryPrediction("c_win") > 2.5)//predict win
 			{
-				if(stm->isInputBitPredicted(3))
-					computer_choice = 1;//rock
-				else if(stm->isInputBitPredicted(4))
-					computer_choice = 2;//paper
-				else if(stm->isInputBitPredicted(5))
-					computer_choice = 3;//sissors
+				computer_choice = (int) floor(stm->getInputEntryPrediction("c_choice")+0.5);
 			}
-			else if(stm->isInputBitPredicted(9))//predict loss
+			else if(stm->getInputEntryPrediction("c_win") < 2.5)//predict loss
 			{
-				if(stm->isInputBitPredicted(3))
-					computer_choice = 1;//rock
-				else if(stm->isInputBitPredicted(4))
-					computer_choice = 2;//paper
-				else if(stm->isInputBitPredicted(5))
-					computer_choice = 3;//sissors
+				computer_choice = (int) floor(stm->getInputEntryPrediction("c_choice")+0.5);
 				int rnum = rand() % 2 + 1;
 				if(computer_choice == 1)
 				{
@@ -300,12 +419,7 @@ void test_rock_paper_scissors()
 			}
 			else//tie
 			{
-				if(stm->isInputBitPredicted(3))
-					computer_choice = 1;//rock
-				else if(stm->isInputBitPredicted(4))
-					computer_choice = 2;//paper
-				else if(stm->isInputBitPredicted(5))
-					computer_choice = 3;//scissors
+				computer_choice = (int) floor(stm->getInputEntryPrediction("c_choice")+0.5);
 			}
 
 		}
@@ -314,30 +428,30 @@ void test_rock_paper_scissors()
 			done = true;
 		}
 
-		//*	
-		for(int k=0;k<numberOfBits;k++)
+		/*	
+			for(int k=0;k<numberOfBits;k++)
+			{
+		//if(stm->isInputBitPredicted(k))
+		//	printf(" %d",k);
+		if (stm->isInputBitPredicted(k) && stm->isInputBitActive(k))
 		{
-			//if(stm->isInputBitPredicted(k))
-			//	printf(" %d",k);
-			if (stm->isInputBitPredicted(k) && stm->isInputBitActive(k))
-			{
-				printf("X");
-			}
-			else if(stm->isInputBitPredicted(k))
-			{
-				printf("P");
-			}
-			else if(stm->isInputBitActive(k))
-			{
-				printf(".");
-			}
-			else
-			{
-				printf(" ");
-			}
+		printf("X");
 		}
-		printf("\n");
+		else if(stm->isInputBitPredicted(k))
+		{
+		printf("P");
+		}
+		else if(stm->isInputBitActive(k))
+		{
+		printf(".");
+		}
+		else
+		{
+		printf(" ");
+		}
+		}
 		//	*/
+		printf("\n");
 
 	}
 	printf("RockPaperScissors Stats\n");
@@ -509,37 +623,53 @@ void test_sine_wave()
 	predictedMinActive = 1;
 	numberOfBits = 30;
 	setup();
-	//int iterations = 50;
+	stm->postInitAddInputDouble("wave",0,numberOfBits,16,2,2);
+	stm->postInitFinalizeInputs();
+	//int iterations = 1000;
 	int iterations = 500000;
-	int y =0;
+	double y =0;
 	int stats_after = 90000;
 	int stat_no_prediction = 0;
 	int stat_first_no_prediction = 0;
 	int stat_last_no_prediction = 0;
+	double prev_pre = 0;
 	for(int i=0;i<iterations;i++)
 	{
 		y = sineWave((numberOfBits/2), 2000, i, 0) + numberOfBits/2;	
-		//y++;
-		//stm->setInputBitActive(y-1);
-		stm->setInputBitActive(y);
-		//stm->setInputBitActive(y+1);
+		//y+=9;
+		int rounded_y = floor(y);
+		stm->setInputEntryValue("wave", rounded_y % numberOfBits);
 		stm->process();
-		int no_p_count = numberOfBits;
+		double ans = stm->getInputEntryPrediction("wave");
+		double prevDiff = y - prev_pre;
+		prev_pre = ans;
+		int rounded_ans = floor(ans + 0.5);
+		/*	printf("%f\t%f\t\t%f",y,ans,prevDiff);
+			if(stm->getInputEntryHasPrediction("wave"))
+			printf("\n");
+			else
+			printf("\tNP\n");
+		 */
+		//		int no_p_count = numberOfBits;
+		if(stm->getInputEntryHasPrediction("wave"))
+			printf("    ");
+		else
+			printf("N   ");
 		for(int k=0;k<numberOfBits;k++)
 		{
 			//if(stm->isInputBitPredicted(k))
 			//	printf(" %d",k);
-			if(stm->isInputBitPredicted(k) && k==y%30)
+			if(k == rounded_ans && k== rounded_y%30)
 			{
 				printf("X");
-				no_p_count--;
+				//no_p_count--;
 			}
-			else if(stm->isInputBitPredicted(k))
+			else if(k == rounded_ans)
 			{
 				printf("P");
-				no_p_count--;
+				//no_p_count--;
 			}
-			else if(k==y%numberOfBits)
+			else if(k==rounded_y%numberOfBits)
 			{
 				printf(".");
 			}
@@ -548,26 +678,28 @@ void test_sine_wave()
 				printf(" ");
 			}
 		}
-		if(i % numberOfBits == 0)
+
+		if(i % 50== 0)
 			printf("\tstep: %d\n", i);
 		else
 			printf("\n");
-		if(no_p_count == numberOfBits)
-		{
-			stat_no_prediction++;
-			if(stat_first_no_prediction == 0)
+		/*		if(no_p_count == numberOfBits)
+				{
+				stat_no_prediction++;
+				if(stat_first_no_prediction == 0)
 				stat_first_no_prediction = i;
-			stat_last_no_prediction = i;
-		}
+				stat_last_no_prediction = i;
+				}
+		 */
 	}
 	stm->printSettings();
 	stm->printStatus();
-	printf("*****Test Summary*****\n");
+	/*	printf("*****Test Summary*****\n");
 
-	printf("Stat Num No Predictions: %d\n", stat_no_prediction);
-	printf("Stat first No Prediction: %d\n", stat_first_no_prediction);
-	printf("Stat last No Prediction: %d\n", stat_last_no_prediction);
-
+		printf("Stat Num No Predictions: %d\n", stat_no_prediction);
+		printf("Stat first No Prediction: %d\n", stat_first_no_prediction);
+		printf("Stat last No Prediction: %d\n", stat_last_no_prediction);
+	 */
 	stm->exportFile(save_location);
 	//stm->initImport(save_location);
 	clean();
@@ -580,35 +712,55 @@ void test_two_sine_wave()
 	predictedMinActive = 1;
 	numberOfBits = 40;
 	setup();
+	stm->postInitAddInputDouble("wave",0,numberOfBits,16,2,2);
+	stm->postInitAddInputDouble("wave1",0,numberOfBits,16,2,2);
+	stm->postInitAddInputDouble("wave2",0,numberOfBits,16,2,2);
+	stm->postInitFinalizeInputs();
 	int iterations = 500000;
-	int y =0;
+	double y1 =0;
+	double y2 =0;
+	double ysum =0;
 	int stats_after = 90000;
 	int stat_no_prediction = 0;
 	int stat_first_no_prediction = 0;
 	int stat_last_no_prediction = 0;
-
+	double prev_pre = 0;
 	for(int i=0;i<iterations;i++)
 	{
-		y = sineWave(numberOfBits/4, 1000, i, 0) + numberOfBits/4;	
-		y += sineWave(numberOfBits/4+1, 4000, i, 0) + numberOfBits/4;	
-		stm->setInputBitActive(y);
+		y1 = sineWave(numberOfBits/4, 1000, i, 0) + numberOfBits/4;	
+		y2 = sineWave(numberOfBits/4, 4000, i, 0) + numberOfBits/4;	
+		ysum = y1 + y2;
+
+		int rounded_y = floor(ysum);
+		int rounded_y1 = floor(y1);
+		int rounded_y2 = floor(y2);
+		stm->setInputEntryValue("wave", rounded_y % numberOfBits);
+		stm->setInputEntryValue("wave1", rounded_y1 % numberOfBits);
+		stm->setInputEntryValue("wave2", rounded_y2 % numberOfBits);
 		stm->process();
-		int no_p_count = numberOfBits;
-		for(int k=0;k<numberOfBits;k++)
+		double ans = stm->getInputEntryPrediction("wave");
+		double prevDiff = ysum - prev_pre;
+		prev_pre = ans;
+		int rounded_ans = floor(ans + 0.5);
+		if(stm->getInputEntryHasPrediction("wave"))
+			printf("    ");
+		else
+			printf("N   ");
+		for(int k=0;k<numberOfBits+5;k++)
 		{
 			//if(stm->isInputBitPredicted(k))
 			//	printf(" %d",k);
-			if(stm->isInputBitPredicted(k) && k==y%30)
+			if(k == rounded_ans && k== rounded_y%30)
 			{
 				printf("X");
-				no_p_count--;
+				//no_p_count--;
 			}
-			else if(stm->isInputBitPredicted(k))
+			else if(k == rounded_ans)
 			{
 				printf("P");
-				no_p_count--;
+				//no_p_count--;
 			}
-			else if(k==y%numberOfBits)
+			else if(k==rounded_y%numberOfBits)
 			{
 				printf(".");
 			}
@@ -617,17 +769,11 @@ void test_two_sine_wave()
 				printf(" ");
 			}
 		}
-		if(i % numberOfBits == 0)
+
+		if(i % 50== 0)
 			printf("\tstep: %d\n", i);
 		else
 			printf("\n");
-		if(no_p_count == numberOfBits)
-		{
-			stat_no_prediction++;
-			if(stat_first_no_prediction == 0)
-				stat_first_no_prediction = i;
-			stat_last_no_prediction = i;
-		}
 	}
 	stm->printSettings();
 	stm->printStatus();

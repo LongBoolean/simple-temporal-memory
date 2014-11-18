@@ -5,6 +5,7 @@
 #include "column.h"
 #include "cell_counter.h"
 #include "inputBit.h"
+#include "inputEntry.h"
 class Stm
 {
 public:
@@ -17,10 +18,14 @@ public:
 	void preInitMaxCellConnections(int numConnections){initMaxCellConnections = numConnections;}
 	void preInitNumInputConnections(int numConnections){initNumInputConnections = numConnections;}
 	void init();
+	void postInitFinalizeInputs();
 	//input
+	void postInitAddInputDouble(std::string identifier, double min, double max, int numBuckets, int bucketWidth, int inputWidth);
 	void setInputBitActive(int input_bit_index); ////////future: use input parser instead of direct access///
 	void clearInputBitActive(); ////////future: use input parser instead of direct access/////////////
 	void addInputBit();
+	void addInputBits(int num);
+	void setInputEntryValue(std::string identifier, double value);
 	
 	//compute active
 	//make predictions
@@ -30,6 +35,8 @@ public:
 	bool isColumnPredicted(int col_index); ///////future: make private ///////////////////////////
 	bool isInputBitPredicted(int input_bit_index); ///////future: make private ///////////////////////////
 	bool isInputBitActive(int input_bit_index);
+	double getInputEntryPrediction(std::string identifier);
+	bool getInputEntryHasPrediction(std::string identifier);
 
 	//file import/export 
 	void exportFile(std::string file_path);
@@ -48,6 +55,7 @@ public:
 	
 
 private:
+	std::vector<InputEntry*> entrys_vec; //store input entries
 	std::vector<int> inputs_vec;//store the inputs bit activation
 	std::vector<Column*> chosen_columns_vec;//store the columns to be activated
 	std::vector<Column*> column_vec;//store the columns
@@ -61,6 +69,7 @@ private:
 	std::vector<Cell_counter*> cell_count_predicted_vec;
 
 	bool has_init = false;
+	bool file_init = false;
 	int initCells;
 	int initColumns;
 	int initMaxCellConnections;
@@ -81,20 +90,24 @@ private:
 	double spatial_learn_decrement = 0.02;//future: needs setter
 	double overlap_min_strength = 0.2;//future: needs setter
 	double overlap_chosen_percentage = 0.02;
+	double trim_input_percentage = 0.2;//future: needs setter
 	int spatial_min_active = 1;
 	int randSeed;
 	
 	void initConnections();
 	void initStructures();
+	void initInputBitConnections();
+	void updateBitsFromEntrys();
+	void trimInputBits();
 	void compute_overlap();
 	void compute_active();
 	void make_predictions();
 	void new_cell_connection(Cell* c_send, Cell* c_receive);
 	void new_cell_connection(Cell* c_send, Cell* c_receive, double strength);
 	void delete_cell_connection(Cell_connection* connection);
-	void initEmptyInputBit();
 	void new_input_bit_connection(InputBit* inputBit, Column* column, double strength);
 	void delete_input_bit_connection(Input_connection* connection);
+	void addInputEntry(std::string identifier, enum e_EntryType entryType, double min, double max, int numBuckets, int bucketWidth, int inputWidth);
 	void clean();
 };
 #endif
