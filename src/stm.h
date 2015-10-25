@@ -6,6 +6,7 @@
 #include "cell_counter.h"
 #include "inputBit.h"
 #include "inputEntry.h"
+//#include "enumEntry.h"
 class Stm
 {
 public:
@@ -17,15 +18,38 @@ public:
 	void preInitNumColumns(int numColumns){initColumns = numColumns;}
 	void preInitMaxCellConnections(int numConnections){initMaxCellConnections = numConnections;}
 	void preInitNumInputConnections(int numConnections){initNumInputConnections = numConnections;}
+	void preInitDefineEnum(std::string name, int width, int typeSize )
+	{
+		//add new enum to the enum definitions map
+		//
+	}
+	
 	void init();
 	void postInitFinalizeInputs();
+	void postInitAddEnumType(std::string definedEnumName, std::string typeName)
+	{
+		//get the enum from the definitions map using definedEnumName
+		//add the typeName to that enums list of types	
+		//generate a sdr for that new type
+	}
 	//input
 	void postInitAddInputDouble(std::string identifier, double min, double max, int numBuckets, int bucketWidth, int inputWidth);
+	void postInitAddInputEnum(std::string enumInstanceName, std::string definedEnumName)
+	{
+		//add new enum instance to the enum instance map
+		//
+	}
 	void setInputBitActive(int input_bit_index); ////////future: use input parser instead of direct access///
 	void clearInputBitActive(); ////////future: use input parser instead of direct access/////////////
 	void addInputBit();
 	void addInputBits(int num);
 	void setInputEntryValue(std::string identifier, double value);
+	void setInputEnumValue(std::string identifier, std::string value)
+	{
+		//set enum value here
+	}
+	void setInputEntryOverlap(std::string identifier, double overlap);
+	InputEntry * getInputEntryIdentFromBit(int bit_index);
 	
 	//compute active
 	//make predictions

@@ -607,7 +607,50 @@ void Stm::setInputEntryValue(std::string identifier, double value)
 		}
 	}
 }
+void Stm::setInputEntryOverlap(std::string identifier, double overlap)
+{
+	bool done = false;
+	for(int i=0;!done && i<entrys_vec.size();i++)
+	{
+		InputEntry* entry = entrys_vec[i];
+		if(identifier.compare(entry->getIdentifier()) == 0)
+		{
 
+			//bounds checking and enforcement
+			double min = 0.0;
+			double max = 10.0;
+			if(overlap < min)
+			{
+				overlap = min;
+			}
+			else if(overlap > max)
+			{
+				overlap = max;
+			}
+
+			entry->setOverlapWeight(overlap);
+			done = true;
+		}
+	}
+}
+InputEntry* Stm::getInputEntryIdentFromBit(int bit_index)
+{
+
+	InputEntry* result;
+	bool done = false;
+	for(int i=0;!done && i<entrys_vec.size();i++)
+	{
+		InputEntry* entry = entrys_vec[i];
+		int startIndex = entry->getStartInputIndex();
+		int endIndex = entry->getLastInputIndex();
+		if((bit_index >= startIndex) && (bit_index <= endIndex))
+		{
+			done = true;
+			result = entry;
+		}
+	}
+	return result;
+}
 void Stm::addInputBit()
 {
 	//create and store new input bit
@@ -744,6 +787,9 @@ void Stm::compute_overlap()
 	{
 		//Go through all of the connections 
 		InputBit* inputBit = input_bit_vec[inputs_vec[i]];
+		InputEntry* entry = getInputEntryIdentFromBit(
+				inputBit->getInputIndex());
+		double bitWeight = entry->getOverlapWeight();
 		for(int j=0;j<inputBit->input_bit_connection_vec.size();j++)
 		{
 			//ignore weak connections
@@ -755,7 +801,7 @@ void Stm::compute_overlap()
 					//increment score
 					if(overlap_compute_vec[k]->column == inputBit->input_bit_connection_vec[j]->column)
 					{
-						overlap_compute_vec[k]->overlap_score++;
+						overlap_compute_vec[k]->overlap_score+=bitWeight;
 						exist = true;
 					}
 				}	
@@ -764,7 +810,7 @@ void Stm::compute_overlap()
 				{
 					Column_score* c_score = new Column_score();
 					c_score->column = inputBit->input_bit_connection_vec[j]->column;
-					c_score->overlap_score = 1;
+					c_score->overlap_score = bitWeight;
 					overlap_compute_vec.push_back(c_score);
 				}
 			}
@@ -779,7 +825,7 @@ void Stm::compute_overlap()
 
 	for(int i=0;i<overlap_compute_vec.size();i++)
 	{
-		int compare_score = overlap_compute_vec[i]->overlap_score;
+		double compare_score = overlap_compute_vec[i]->overlap_score;
 		it = best_scores_list.begin();
 		bool stop = false; 
 		for(int j=0;!stop && j<current_slots;j++)

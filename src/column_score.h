@@ -4,7 +4,7 @@ class Column_score
 {
 public:
 	Column* column = nullptr;
-	int overlap_score = 0;
+	double overlap_score = 0;
 
 private:
 };

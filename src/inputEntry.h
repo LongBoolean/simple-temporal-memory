@@ -39,6 +39,10 @@ public:
 	void setRawPrediction(double value){raw_prediction_value = value;}
 	double getRawPrediction(){return raw_prediction_value;}
 
+	void setOverlapWeight(double w){overlap_weight = w;}
+	double getOverlapWeight(){return overlap_weight;}
+
+
 
 private:
 	bool finalized = false;
@@ -56,6 +60,8 @@ private:
 	bool has_prediction = false;
 	double raw_prediction_value = 0;//percentage
 	double raw_active_value = 0;//percentage
+
+	double overlap_weight = 1.0;
 };
 #endif
 

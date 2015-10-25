@@ -15,6 +15,7 @@ void test_two_sine_wave();
 void test_rand_num();
 void test_rock_paper_scissors();
 void test_enum_like();
+void test_enum();
 void test_letters();
 void test_words();
 void test_follow();
@@ -65,9 +66,10 @@ int main()
 //	menu();
 //	test_sine_wave();
 //	test_words();
-	test_two_sine_wave();
+//	test_two_sine_wave();
 //	test_rock_paper_scissors();
 //	test_follow();
+	test_enum();
 	return 0;
 }
 void setup()
@@ -101,6 +103,270 @@ void setup()
 	}
 */
 
+}
+void test_enum()
+{
+	cols = 9;//12;
+	cells = 20;
+	connections = cols*cells*.9;
+	predictedMinActive = 1;
+	numberOfBits = 12;
+	
+	//define enums 
+	stm->preInitDefineEnum("choice",10,5);
+	stm->preInitDefineEnum("outcome",10,5);
+	setup();
+	
+	//create enum types
+	stm->postInitAddEnumType("choice", "r");
+	stm->postInitAddEnumType("choice", "p");
+	stm->postInitAddEnumType("choice", "s");
+	stm->postInitAddEnumType("outcome", "win");
+	stm->postInitAddEnumType("outcome", "loss");
+	stm->postInitAddEnumType("outcome", "tie");
+
+
+	stm->postInitAddInputEnum("p_choice","choice");
+	stm->postInitAddInputEnum("c_choice","choice");
+	//stm->postInitAddInputDouble("p_choice",1,3,8,2,2);
+	//stm->postInitAddInputDouble("c_choice",1,3,8,2,2);
+	stm->postInitAddInputEnum("p_state","outcome");
+	//stm->postInitAddInputDouble("c_state","outcome");
+	
+	//stm->postInitAddInputDouble("p_win",1,4,8,2,2);
+	//stm->postInitAddInputDouble("c_win",1,4,8,2,2);
+	//stm->postInitAddInputDouble("tie",1,4,8,2,2);
+	
+	//set overlap weights
+	stm->setInputEntryOverlap("c_choice", 2.0);
+	stm->postInitFinalizeInputs();
+
+	printf("RockPaperScissors test\n");
+	printf("1: Rock \t2: Paper \t3:Scissors \t0: exit\n");
+	int count = 0;
+	bool done = false;
+	int player_choice = 0;
+	int computer_choice = rand()%3 + 1;
+	bool player_win = false;
+	bool computer_win = false;
+	bool tie = false;
+	int stat_player_wins = 0;
+	int stat_computer_wins = 0;
+	int stat_ties = 0;
+	bool print = false;
+	bool incr = true;
+
+	printf("Please wait for results...\n");
+	//while(!done)
+	while(count < 1000000 && !done)
+	{
+
+		count++;
+		if(print && count%10==0)
+		{
+			printf("\nRockPaperScissors test\n");
+			printf("1: Rock\t2: Paper\t3:Scissors\t0: exit\n\n");
+
+		}
+		//get player input
+		//std::cin >> player_choice;
+		player_choice = count % 3 + 1;
+		if(player_choice > 0 && player_choice < 4 )
+		{
+			//calculate winner
+			tie = false;
+			player_win = false;
+			computer_win = false;
+			if(player_choice == computer_choice)
+			{
+				tie = true;
+				stat_ties++;
+			}
+			else if(player_choice == 1 && computer_choice == 2)
+			{
+				computer_win = true;
+				stat_computer_wins++;
+			}
+			else if(player_choice == 2 && computer_choice == 1)
+			{
+				player_win = true;
+				stat_player_wins++;
+			}
+			else if(player_choice == 1 && computer_choice == 3)
+			{
+				player_win = true;
+			}
+			else if(player_choice == 3 && computer_choice == 1)
+			{
+				computer_win = true;
+				stat_computer_wins++;
+			}
+			else if(player_choice == 3 && computer_choice == 2)
+			{
+				player_win = true;
+				stat_player_wins++;
+			}
+			else if(player_choice == 2 && computer_choice == 3)
+			{
+				computer_win = true;
+				stat_computer_wins++;
+			}
+			//output results
+			if(print)
+			{
+				printf("Player: %s\t Computer: %s\t\t%s\n", 
+						(player_choice==1)?("Rock"):((player_choice==2)?("Paper"):("Scissors")),
+						(computer_choice==1)?("Rock"):((computer_choice==2)?("Paper"):("Scissors")),
+						(player_win)?("PLayer Wins!!!"):((computer_win)?("Computer Wins"):("It's a Tie")));
+			}
+
+			//feed data into stm
+			/* How the data is stored.....
+			   -Things to store
+			   r  p  s
+			   --Player choice 	0  1  2
+			   --Computer choice	3  4  5 
+
+			   t  f
+			   --Player Win		6  7 
+			   --Computer Win	8  9 
+			   --Tie		10 11
+
+			 */
+			std::string player_str = "";
+			std::string computer_str = "";
+			switch(player_choice)
+			{
+				case 0:
+					player_str = "r";
+					break;
+				case 1:
+					player_str = "p";
+					break;
+				case 2:
+					player_str = "s";
+					break;
+			}
+			switch(computer_choice)
+			{
+				case 3:
+					computer_str = "r";
+					break;
+				case 4:
+					computer_str = "p";
+					break;
+				case 5:
+					computer_str = "s";
+					break;
+			}
+			stm->setInputEnumValue("p_choice", player_str);
+			stm->setInputEnumValue("c_choice", computer_str);
+			if(player_win)
+			{
+				printf("Player\t\t");
+				stm->setInputEntryValue("p_win", 3);
+			}
+			else
+			{
+				stm->setInputEntryValue("p_win", 2);
+			}
+			if(computer_win)
+			{
+				printf("Computer\t");
+				stm->setInputEntryValue("c_win", 3);
+			}
+			else
+			{
+				stm->setInputEntryValue("c_win", 2);
+			}
+			if(tie)
+			{
+				printf("Tie\t\t");
+				stm->setInputEntryValue("tie", 3);
+			}
+			else
+			{
+				stm->setInputEntryValue("tie", 2);
+			}
+
+			//stm makes choice for next round
+			stm->process();
+			double raw_c_choice = (int) floor(stm->getInputEntryPrediction("c_choice")+0.5);
+
+			//printf("c_win: %f\n", stm->getInputEntryPrediction("c_win"));
+			//printf("p_win: %f\n", stm->getInputEntryPrediction("p_win"));
+			if(stm->getInputEntryPrediction("c_win") > 2.5)//predict win
+			{
+				computer_choice = (int) floor(stm->getInputEntryPrediction("c_choice")+0.5);
+			}
+			else if(stm->getInputEntryPrediction("c_win") < 2.5)//predict loss
+			{
+				computer_choice = (int) floor(stm->getInputEntryPrediction("c_choice")+0.5);
+				int rnum = rand() % 2 + 1;
+				if(computer_choice == 1)
+				{
+					computer_choice += rnum;
+				}
+				else if(computer_choice == 2)
+				{
+					computer_choice += rnum;
+					if(computer_choice == 4)
+						computer_choice = 1;
+				}
+				else
+				{
+					computer_choice -= rnum;
+				}
+				/*
+				   if(stm->isInputBitPredicted(0))
+				   computer_choice = 2;//rock
+				   else if(stm->isInputBitPredicted(1))
+				   computer_choice = 3;//paper
+				   else if(stm->isInputBitPredicted(2))
+				   computer_choice = 1;//sissors
+				 */
+			}
+			else//tie
+			{
+				computer_choice = (int) floor(stm->getInputEntryPrediction("c_choice")+0.5);
+			}
+
+		}
+		else
+		{
+			done = true;
+		}
+
+		/*	
+			for(int k=0;k<numberOfBits;k++)
+			{
+		//if(stm->isInputBitPredicted(k))
+		//	printf(" %d",k);
+		if (stm->isInputBitPredicted(k) && stm->isInputBitActive(k))
+		{
+		printf("X");
+		}
+		else if(stm->isInputBitPredicted(k))
+		{
+		printf("P");
+		}
+		else if(stm->isInputBitActive(k))
+		{
+		printf(".");
+		}
+		else
+		{
+		printf(" ");
+		}
+		}
+		//	*/
+		printf("\n");
+
+	}
+	printf("RockPaperScissors Stats\n");
+	printf("Player Wins: %d\nComputer Wins: %d\nTies: %d\n", stat_player_wins, stat_computer_wins, stat_ties);
+	stm->exportFile(save_location);
+	clean();	
 }
 void test_follow()
 {
@@ -253,9 +519,11 @@ void test_rock_paper_scissors()
 	setup();
 	stm->postInitAddInputDouble("p_choice",1,3,8,2,2);
 	stm->postInitAddInputDouble("c_choice",1,3,8,2,2);
-	stm->postInitAddInputDouble("p_win",1,4,4,2,2);
-	stm->postInitAddInputDouble("c_win",1,4,4,2,2);
-	stm->postInitAddInputDouble("tie",1,4,4,2,2);
+	stm->postInitAddInputDouble("p_win",1,4,8,2,2);
+	stm->postInitAddInputDouble("c_win",1,4,8,2,2);
+	stm->postInitAddInputDouble("tie",1,4,8,2,2);
+	//set overlap weights
+	stm->setInputEntryOverlap("c_choice", 2.0);
 	stm->postInitFinalizeInputs();
 	printf("RockPaperScissors test\n");
 	printf("1: Rock \t2: Paper \t3:Scissors \t0: exit\n");
@@ -274,7 +542,7 @@ void test_rock_paper_scissors()
 
 	printf("Please wait for results...\n");
 	//while(!done)
-	while(count < 100000 && !done)
+	while(count < 1000000 && !done)
 	{
 
 		count++;
@@ -715,6 +983,9 @@ void test_two_sine_wave()
 	stm->postInitAddInputDouble("wave",0,numberOfBits,16,2,2);
 	stm->postInitAddInputDouble("wave1",0,numberOfBits,16,2,2);
 	stm->postInitAddInputDouble("wave2",0,numberOfBits,16,2,2);
+	stm->setInputEntryOverlap("wave", 1.0);
+	stm->setInputEntryOverlap("wave1", 1.0);
+	stm->setInputEntryOverlap("wave2", 1.0);
 	stm->postInitFinalizeInputs();
 	int iterations = 500000;
 	double y1 =0;
