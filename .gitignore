@@ -23,3 +23,8 @@
 # Vim
 .*.swp
 
+# Specific Unwanted Files/Directories
+tags
+save/
+
+
