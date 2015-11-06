@@ -35,7 +35,14 @@ double sineWave(double amp, double freq, double t, double phase)
 void menu()
 {
 	printf("Simple Temporal Memory tests\n");
-	printf("Tests to run:\n1\tSine Wave Prediction\n2\tSummed Sine Waves Prediction\n3\trandom number prediction\n");//4\trock paper scissors game\n");
+	printf("Tests to run:\n"
+			"1\tSine Wave Prediction\n"
+			"2\tSummed Sine Waves Prediction\n"
+			"3\trandom number prediction\n"
+			"4\tenum test\n"
+			"5\tfollow sim\n"
+			"6\twords test\n"
+			"7\trock paper scissors game\n");
 	printf("0\texit\n");
 	int choice = 0;
 	printf("Choice: ");
@@ -53,6 +60,15 @@ void menu()
 			test_rand_num();
 			break;
 		case 4:
+			test_enum();
+			break;
+		case 5:
+			test_follow();
+			break;
+		case 6:
+			test_words();
+			break;
+		case 7:
 			test_rock_paper_scissors();
 			break;
 		default:
@@ -63,13 +79,13 @@ void menu()
 
 int main()
 {
-//	menu();
+	menu();
 //	test_sine_wave();
 //	test_words();
 //	test_two_sine_wave();
 //	test_rock_paper_scissors();
 //	test_follow();
-	test_enum();
+	//test_enum();
 	return 0;
 }
 void setup()
@@ -138,7 +154,7 @@ void test_enum()
 	//stm->postInitAddInputDouble("tie",1,4,8,2,2);
 	
 	//set overlap weights
-	stm->setInputEntryOverlap("c_choice", 2.0);
+	//stm->setInputEntryOverlap("c_choice", 2.0);
 	stm->postInitFinalizeInputs();
 
 	printf("RockPaperScissors test\n");
@@ -264,29 +280,20 @@ void test_enum()
 			if(player_win)
 			{
 				printf("Player\t\t");
-				stm->setInputEntryValue("p_win", 3);
+				//stm->setInputEnumValue("p_state", 3);
 			}
 			else
 			{
-				stm->setInputEntryValue("p_win", 2);
+				//stm->setInputEnumValue("p_state", 2);
 			}
 			if(computer_win)
 			{
 				printf("Computer\t");
-				stm->setInputEntryValue("c_win", 3);
-			}
-			else
-			{
-				stm->setInputEntryValue("c_win", 2);
 			}
 			if(tie)
 			{
 				printf("Tie\t\t");
-				stm->setInputEntryValue("tie", 3);
-			}
-			else
-			{
-				stm->setInputEntryValue("tie", 2);
+				//stm->setInputEnumValue("tie", 3);
 			}
 
 			//stm makes choice for next round
